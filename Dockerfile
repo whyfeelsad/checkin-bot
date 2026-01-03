@@ -3,9 +3,7 @@
 FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
@@ -16,7 +14,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --no-dev
+RUN uv sync --no-dev --no-editable
 
 # Copy source code
 COPY src/ ./src/
