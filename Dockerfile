@@ -16,7 +16,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies
-RUN uv sync --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --no-dev
 
 # Copy source code
 COPY src/ ./src/
