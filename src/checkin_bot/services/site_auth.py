@@ -1,6 +1,7 @@
 """站点认证服务"""
 
 import logging
+from collections.abc import Callable
 
 from curl_cffi.requests import AsyncSession
 
@@ -28,7 +29,7 @@ class SiteAuthService:
         site: SiteType,
         username: str,
         password: str,
-        progress_callback: callable | None = None,
+        progress_callback: Callable[..., None] | None = None,
         impersonate: str | None = None,
     ) -> str | None:
         """
