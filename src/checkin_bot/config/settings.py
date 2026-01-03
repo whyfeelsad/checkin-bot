@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     timezone: str = Field(default="Asia/Shanghai", description="时区配置")
     session_ttl_minutes: int = Field(default=10, description="会话过期时间（分钟）")
     permission_cache_ttl_minutes: int = Field(default=5, description="权限缓存时间（分钟）")
+    default_checkin_hour: int = Field(default=4, description="默认签到小时")
+    default_push_hour: int = Field(default=9, description="默认推送小时")
 
     # ==================== 日志配置 ====================
     log_level_str: str = Field(default="INFO", alias="LOG_LEVEL", description="日志级别: DEBUG, INFO, WARNING, ERROR")

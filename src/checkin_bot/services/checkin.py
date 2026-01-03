@@ -1,8 +1,8 @@
-"""签到服务"""
+"""Check-in service"""
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from checkin_bot.config.constants import CheckinMode, CheckinStatus, SiteType
 from checkin_bot.core.timezone import now, to_local
@@ -16,11 +16,14 @@ logger = logging.getLogger(__name__)
 
 
 class CheckinService:
-    """签到服务"""
+    """Check-in service"""
 
     def __init__(self):
         self.account_repo = AccountRepository()
         self.log_repo = CheckinLogRepository()
+        # Cache for today's check-in status: {(account_id, date): count}
+        self._today_cache: dict[tuple[int, date], int] = {}
+        self._cache_date: date | None = None
 
         # 站点适配器映射
         self._adapters = {
@@ -61,20 +64,29 @@ class CheckinService:
 
     async def _do_checkin(self, account, is_manual: bool = False) -> dict:
         """
-        执行签到（内部方法）
+        Execute check-in (internal method)
 
         Args:
-            account: 账号对象
-            is_manual: 是否为手动签到
+            account: Account object
+            is_manual: Whether this is a manual check-in
 
         Returns:
-            签到结果字典
+            Check-in result dictionary
         """
-        checkin_type = "手动" if is_manual else "自动"
+        checkin_type = "Manual" if is_manual else "Auto"
+        today = date.today()
 
-        # 检查今天是否已经签到成功过
-        today_success_count = await self.log_repo.get_today_success_count(account.id)
-        if today_success_count > 0:
+        # Clear cache if date has changed
+        if self._cache_date != today:
+            self._today_cache.clear()
+            self._cache_date = today
+
+        # Check today's check-in status with cache
+        cache_key = (account.id, today)
+        if cache_key not in self._today_cache:
+            self._today_cache[cache_key] = await self.log_repo.get_today_success_count(account.id)
+
+        if self._today_cache[cache_key] > 0:
             logger.info(f"{checkin_type}签到跳过: 站点 {account.site.value} 用户 {account.site_username} (今日已签到)")
             return {
                 "success": True,

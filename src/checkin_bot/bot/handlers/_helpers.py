@@ -1,10 +1,10 @@
-"""Bot 处理器辅助函数"""
+"""Bot handler helper functions"""
 
 import logging
-from typing import Any
+from typing import Union
 
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ConversationHandler
 from telegram.error import BadRequest
 
 from checkin_bot.bot.keyboards.account import (
@@ -12,6 +12,7 @@ from checkin_bot.bot.keyboards.account import (
     get_empty_account_keyboard,
 )
 from checkin_bot.bot.keyboards.main_menu import get_main_menu_keyboard
+from checkin_bot.models.user import User
 from checkin_bot.repositories.user_repository import UserRepository
 from checkin_bot.services.account_manager import AccountManager
 from checkin_bot.services.permission import PermissionService
@@ -19,7 +20,10 @@ from checkin_bot.services.permission import PermissionService
 logger = logging.getLogger(__name__)
 
 
-async def get_user_or_error(update: Update, return_none: bool = False) -> Any | None:
+async def get_user_or_error(
+    update: Update,
+    return_none: bool = False
+) -> Union[User, None, ConversationHandler]:
     """
     获取当前用户，如果不存在则发送错误消息
 
@@ -198,7 +202,7 @@ def parse_time_callback(callback_data: str, prefix: str) -> tuple[int, str | int
         return None
 
 
-async def answer_callback_query(update: Update):
+async def answer_callback_query(update: Update) -> None:
     """安全地回答回调查询"""
     if update.callback_query:
         try:

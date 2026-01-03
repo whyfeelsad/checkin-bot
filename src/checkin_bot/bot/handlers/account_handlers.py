@@ -1,11 +1,16 @@
-"""账号管理处理器"""
+"""Account management handlers"""
 
 import logging
 import random
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CallbackQueryHandler, ConversationHandler, MessageHandler, filters
-from telegram.ext import ConversationHandler
+from telegram.ext import (
+    ContextTypes,
+    CallbackQueryHandler,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 from telegram.error import BadRequest, TelegramError
 
 from checkin_bot.bot.handlers._helpers import (

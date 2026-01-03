@@ -50,45 +50,73 @@ class AccountManager:
         impersonate: str | None = None,
     ) -> dict:
         """
-        添加账号
+        Add account
 
         Args:
-            telegram_id: Telegram 用户 ID
-            site: 站点类型
-            site_username: 站点用户名
-            password: 密码
-            checkin_mode: 签到模式
-            progress_callback: 进度回调函数
-            impersonate: 浏览器指纹（可选，已废弃，保留用于兼容）
+            telegram_id: Telegram user ID
+            site: Site type
+            site_username: Site username
+            password: Password
+            checkin_mode: Check-in mode
+            progress_callback: Progress callback function
+            impersonate: Browser fingerprint (optional, deprecated, kept for compatibility)
 
         Returns:
-            操作结果
+            Operation result
         """
         logger.info(f"添加 站点 {site.value} 账号: {site_username} (ID={telegram_id})")
 
-        # 1. 获取或创建用户
+        # Get or create user
+        user = await self._get_or_create_user(telegram_id)
+
+        # Determine fingerprint to use
+        fingerprint = await self._determine_fingerprint(user, impersonate)
+
+        # Login and get cookie
+        cookie = await self._login_and_get_cookie(
+            site, site_username, password, fingerprint, progress_callback
+        )
+
+        if not cookie:
+            return self._login_failed_response()
+
+        # Update user fingerprint if needed
+        if not user.fingerprint or (impersonate and impersonate != user.fingerprint):
+            await self.user_repo.update(user.id, fingerprint=fingerprint)
+            logger.debug(f"更新用户指纹: {fingerprint}")
+
+        # Save account to database
+        return await self._save_account(
+            user, site, site_username, password, checkin_mode, cookie
+        )
+
+    async def _get_or_create_user(self, telegram_id: int):
+        """Get or create user"""
         user = await self.user_repo.get_by_telegram_id(telegram_id)
         if not user:
             logger.debug(f"创建新用户: telegram_id={telegram_id}")
-            user = await self.user_repo.create(
-                telegram_id=telegram_id,
-            )
+            user = await self.user_repo.create(telegram_id=telegram_id)
+        return user
 
-        # 2. 确定使用的指纹
-        # 如果传入了 impersonate 参数（重试时），优先使用它；否则如果用户已有有效指纹，使用它；否则随机选择一个
+    async def _determine_fingerprint(self, user, impersonate: str | None) -> str:
+        """Determine which fingerprint to use"""
         if impersonate:
-            fingerprint = impersonate
-            logger.debug(f"使用传入指纹（重试）: {fingerprint}")
-        elif user.fingerprint:
-            fingerprint = user.fingerprint
-            logger.debug(f"使用已有指纹: {fingerprint}")
-        else:
-            fingerprint = random.choice(FINGERPRINT_OPTIONS)
-            logger.debug(f"随机选择指纹: {fingerprint}")
+            logger.debug(f"使用传入指纹（重试）: {impersonate}")
+            return impersonate
+        if user.fingerprint:
+            logger.debug(f"使用已有指纹: {user.fingerprint}")
+            return user.fingerprint
+        fingerprint = random.choice(FINGERPRINT_OPTIONS)
+        logger.debug(f"随机选择指纹: {fingerprint}")
+        return fingerprint
 
-        # 3. 站点登录获取 Cookie
+    async def _login_and_get_cookie(
+        self, site, site_username: str, password: str,
+        fingerprint: str, progress_callback
+    ) -> str | None:
+        """Login and get cookie"""
         logger.debug(f"登录站点 {site.value}: 用户 {site_username}")
-        cookie = await self.auth_service.login(
+        return await self.auth_service.login(
             site=site,
             username=site_username,
             password=password,
@@ -96,22 +124,21 @@ class AccountManager:
             impersonate=fingerprint,
         )
 
-        if not cookie:
-            # 日志已在 auth_service 中记录
-            return {
-                "success": False,
-                "message": "登录失败，请检查账号密码或稍后重试",
-            }
+    @staticmethod
+    def _login_failed_response() -> dict:
+        """Return login failure response"""
+        return {
+            "success": False,
+            "message": "登录失败，请检查账号密码或稍后重试",
+        }
 
-        # 4. 登录成功，如果使用了新指纹且与用户原有指纹不同，更新用户的指纹
-        if not user.fingerprint or (impersonate and impersonate != user.fingerprint):
-            await self.user_repo.update(user.id, fingerprint=fingerprint)
-            logger.debug(f"更新用户指纹: {fingerprint}")
-
-        # 5. 加密密码
+    async def _save_account(
+        self, user, site, site_username: str, password: str,
+        checkin_mode: CheckinMode, cookie: str
+    ) -> dict:
+        """Save account to database and update credits"""
         encrypted_pass = encrypt_password(password)
 
-        # 6. 创建账号记录
         try:
             logger.debug(f"创建账号记录: 站点 {site.value} 用户 {site_username}")
             account = await self.account_repo.create(
@@ -122,29 +149,10 @@ class AccountManager:
                 checkin_mode=checkin_mode,
             )
 
-            # 7. 更新 Cookie
             await self.account_repo.update_cookie(account.id, cookie)
 
-            # 8. 获取真实鸡腿数并更新到数据库
-            adapters = {
-                SiteType.NODESEEK: NodeSeekAdapter(),
-                SiteType.DEEPFLOOD: DeepFloodAdapter(),
-            }
-            adapter = adapters.get(site)
-            if adapter:
-                try:
-                    # 重新获取 account 对象以包含 cookie
-                    account = await self.account_repo.get_by_id(account.id)
-                    logger.info(f"调用 get_credits: cookie={bool(account.cookie)}")
-                    credits = await adapter.get_credits(account)
-                    logger.info(f"get_credits 返回: credits={credits}")
-                    if credits is not None:
-                        await self.account_repo.update_credits(account.id, credits)
-                        logger.info(f"获取鸡腿数成功: 站点 {site.value} 用户 {site_username} 鸡腿数={credits}")
-                    else:
-                        logger.warning(f"获取鸡腿数为 None: 站点 {site.value} 用户 {site_username}")
-                except Exception as e:
-                    logger.error(f"获取鸡腿数异常: 站点 {site.value} 用户 {site_username} - {e}", exc_info=True)
+            # Get and update credits
+            await self._update_account_credits(account, site, site_username)
 
             logger.info(f"账号添加成功: 站点 {site.value} 用户 {site_username} (ID={account.id})")
             return {
@@ -157,8 +165,30 @@ class AccountManager:
             logger.error(f"添加账号失败: 站点 {site.value} 用户 {site_username} - {e}", exc_info=True)
             return {
                 "success": False,
-                "message": f"添加账号失败: {str(e)}",
+                "message": "系统错误，请稍后重试",
+                "error_code": "ACCOUNT_ADD_FAILED",
             }
+
+    async def _update_account_credits(self, account, site, site_username: str):
+        """Get and update account credits"""
+        adapters = {
+            SiteType.NODESEEK: NodeSeekAdapter(),
+            SiteType.DEEPFLOOD: DeepFloodAdapter(),
+        }
+        adapter = adapters.get(site)
+        if adapter:
+            try:
+                account = await self.account_repo.get_by_id(account.id)
+                logger.info(f"调用 get_credits: cookie={bool(account.cookie)}")
+                credits = await adapter.get_credits(account)
+                logger.info(f"get_credits 返回: credits={credits}")
+                if credits is not None:
+                    await self.account_repo.update_credits(account.id, credits)
+                    logger.info(f"获取鸡腿数成功: 站点 {site.value} 用户 {site_username} 鸡腿数={credits}")
+                else:
+                    logger.warning(f"获取鸡腿数为 None: 站点 {site.value} 用户 {site_username}")
+            except Exception as e:
+                logger.error(f"获取鸡腿数异常: 站点 {site.value} 用户 {site_username} - {e}", exc_info=True)
 
     async def delete_account(self, account_id: int, telegram_id: int) -> dict:
         """

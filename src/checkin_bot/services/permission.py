@@ -24,7 +24,11 @@ class PermissionService:
         self.settings = get_settings()
         self.cache = get_cache()
 
-    async def check_permission(self, telegram_id: int, application=None) -> PermissionLevel:
+    async def check_permission(
+        self,
+        telegram_id: int,
+        application: object | None = None
+    ) -> PermissionLevel:
         """
         检查用户权限
 

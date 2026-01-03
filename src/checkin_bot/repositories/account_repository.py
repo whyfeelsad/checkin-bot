@@ -1,15 +1,20 @@
-"""账号数据访问层"""
+"""Account data access layer"""
 
 from typing import List
 
 from checkin_bot.config.constants import AccountStatus, CheckinMode, SiteType
+from checkin_bot.config.settings import get_settings
 from checkin_bot.core.timezone import now
 from checkin_bot.models.account import Account
 from checkin_bot.repositories.base import BaseRepository
 
 
 class AccountRepository(BaseRepository):
-    """账号 Repository"""
+    """Account Repository"""
+
+    def __init__(self):
+        super().__init__()
+        self.settings = get_settings()
 
     async def create(
         self,
@@ -30,7 +35,7 @@ class AccountRepository(BaseRepository):
                 checkin_mode, status, credits, checkin_count,
                 checkin_hour, push_hour, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, 'active', 0, 0, 4, 9, $6, $6)
+            VALUES ($1, $2, $3, $4, $5, 'active', 0, 0, $7, $8, $6, $6)
             RETURNING *
             """,
             user_id,
@@ -39,6 +44,8 @@ class AccountRepository(BaseRepository):
             encrypted_pass,
             checkin_mode,
             current_time,
+            self.settings.default_checkin_hour,
+            self.settings.default_push_hour,
         )
 
         await self._release_connection(conn)
