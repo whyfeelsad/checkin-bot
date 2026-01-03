@@ -102,3 +102,43 @@ class PermissionService:
     async def revoke_cache(self, telegram_id: int):
         """撤销用户缓存"""
         await self.cache.delete(telegram_id)
+
+    async def check_user_in_whitelist_groups(
+        self, telegram_id: int, application
+    ) -> bool:
+        """
+        检查用户是否在白名单群组/频道中
+
+        Args:
+            telegram_id: Telegram 用户 ID
+            application: Telegram Application 对象（用于调用 API）
+
+        Returns:
+            用户是否在白名单群组/频道中
+        """
+        # 合并群组和频道 ID
+        group_ids = self.settings.whitelist_group_ids
+        channel_ids = self.settings.whitelist_channel_ids
+        all_chat_ids = group_ids + channel_ids
+
+        if not all_chat_ids:
+            return False
+
+        # 检查用户是否在任何一个白名单群组/频道中
+        for chat_id in all_chat_ids:
+            try:
+                member = await application.bot.get_chat_member(
+                    chat_id=chat_id,
+                    user_id=telegram_id,
+                )
+                # 如果能获取到成员信息，说明用户在群组中
+                logger.debug(
+                    f"用户 {telegram_id} 在白名单群组/频道 {chat_id} 中: {member.status}"
+                )
+                return True
+            except Exception as e:
+                # 用户不在群组中或 Bot 无权限访问
+                logger.debug(f"检查用户 {telegram_id} 在群组 {chat_id} 成员身份失败: {e}")
+                continue
+
+        return False
