@@ -45,13 +45,3 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
-
-      - name: Verify image
-        run: |
-          docker run --rm \
-            -e BOT_TOKEN=test \
-            -e CLOUDFLYER_API_URL=http://test \
-            -e CLOUDFLYER_API_KEY=test \
-            -e DATABASE_URL=postgresql://test:test@localhost/test \
-            -e ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
-            ghcr.io/${{ github.repository }}:latest --help || true
