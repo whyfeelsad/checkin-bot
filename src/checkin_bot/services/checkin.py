@@ -88,11 +88,13 @@ class CheckinService:
 
         if self._today_cache[cache_key] > 0:
             logger.info(f"{checkin_type}签到跳过: 站点 {account.site.value} 用户 {account.site_username} (今日已签到)")
+            # 获取今天成功签到获得的鸡腿数
+            today_delta = await self.log_repo.get_today_success_delta(account.id)
             return {
                 "success": True,
                 "status": CheckinStatus.SUCCESS,
                 "message": "今日已签到",
-                "credits_delta": 0,
+                "credits_delta": today_delta,
                 "credits_before": account.credits,
                 "credits_after": account.credits,
                 "username": account.site_username,

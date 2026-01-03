@@ -109,7 +109,7 @@ class AccountUpdateRepository(BaseRepository):
                 RETURNING *
                 """,
                 account_id,
-                now,
+                current_time,
             )
             return self._to_model(record)
         finally:

@@ -156,6 +156,43 @@ class CheckinLogRepository(BaseRepository):
         finally:
             await self._release_connection(conn)
 
+    async def get_last_success_delta(self, account_id: int) -> int:
+        """Get last successful check-in credits_delta for an account"""
+        conn = await self._get_connection()
+        try:
+            delta = await conn.fetchval(
+                """
+                SELECT credits_delta FROM checkin_logs
+                WHERE account_id = $1
+                AND status = 'success'
+                ORDER BY executed_at DESC
+                LIMIT 1
+                """,
+                account_id,
+            )
+            return delta or 0
+        finally:
+            await self._release_connection(conn)
+
+    async def get_today_success_delta(self, account_id: int) -> int:
+        """Get today's successful check-in credits_delta for an account"""
+        conn = await self._get_connection()
+        try:
+            delta = await conn.fetchval(
+                """
+                SELECT credits_delta FROM checkin_logs
+                WHERE account_id = $1
+                AND status = 'success'
+                AND DATE(executed_at) = CURRENT_DATE
+                ORDER BY executed_at ASC
+                LIMIT 1
+                """,
+                account_id,
+            )
+            return delta or 0
+        finally:
+            await self._release_connection(conn)
+
     @staticmethod
     def _to_model(record) -> CheckinLog:
         """Convert database record to model"""

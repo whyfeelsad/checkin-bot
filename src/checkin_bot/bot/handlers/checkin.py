@@ -91,11 +91,24 @@ async def checkin_status_callback(
     if result["success"]:
         delta = result.get("credits_delta", 0)
         after = result.get("credits_after", 0)
+        message = result.get("message", "")
         logger.info(f"手动签到成功: 账号 {account_id} +{delta} 鸡腿, 总计: {after}")
+
+        # 检查是否为重复签到
+        if "今日已签到" in message or "已完成签到" in message or "已经签到" in message or "重复" in message:
+            text = (
+                f"🔔 今日已签到，请勿重复操作！\n"
+                f"📈 鸡腿变化: +{delta}，当前鸡腿：{after}"
+            )
+        else:
+            text = (
+                f"🎉 签到成功！\n"
+                f"📈 鸡腿变化: +{delta}\n"
+                f"💰 当前鸡腿: {after}"
+            )
+
         await update.effective_message.edit_text(
-            f"✅ 签到成功！\n"
-            f"📈 鸡腿变化: +{delta}\n"
-            f"💰 当前鸡腿: {after}",
+            text,
             reply_markup=get_back_to_checkin_list_keyboard(),
         )
     else:

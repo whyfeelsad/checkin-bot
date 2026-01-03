@@ -1036,7 +1036,7 @@ async def delete_account_confirm(
 
     # 删除账号
     account_manager = AccountManager()
-    result = await account_manager.delete_account(account_id, user.id)
+    result = await account_manager.delete_account(account_id, update.effective_user.id)
 
     if result["success"]:
         # 删除成功后直接返回账号列表
@@ -1109,7 +1109,7 @@ async def update_cookie_callback(
     account_manager = AccountManager()
     result = await account_manager.update_account_cookie(
         account_id,
-        user.id,
+        update.effective_user.id,
         progress_callback=None,  # 不发送进度消息
         force=True,  # 用户手动点击时强制更新
     )
@@ -1151,7 +1151,7 @@ async def toggle_mode_callback(
 
     # 切换模式（静默执行，不显示中间消息）
     account_manager = AccountManager()
-    await account_manager.toggle_checkin_mode(account_id, user.id)
+    await account_manager.toggle_checkin_mode(account_id, update.effective_user.id)
 
     # 直接刷新列表显示更新后的状态
     update_status = context.user_data.get("update_status") if context.user_data else None
@@ -1200,7 +1200,7 @@ async def set_checkin_time_callback(
     account_manager = AccountManager()
     await account_manager.update_checkin_time(
         account_id,
-        user.id,
+        update.effective_user.id,
         checkin_hour=hour,
     )
 
@@ -1251,7 +1251,7 @@ async def set_push_time_callback(
     account_manager = AccountManager()
     await account_manager.update_checkin_time(
         account_id,
-        user.id,
+        update.effective_user.id,
         push_hour=hour,
     )
 

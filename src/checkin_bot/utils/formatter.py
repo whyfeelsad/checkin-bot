@@ -39,14 +39,22 @@ def format_checkin_result(result: dict) -> str:
     if result["success"]:
         delta = result.get("credits_delta", 0)
         after = result.get("credits_after", 0)
+        message = result.get("message", "")
+
+        # 检查是否为重复签到
+        if "已完成签到" in message or "已经签到" in message or "重复" in message:
+            return (
+                f"🔔 今日已签到，请勿重复操作！\n"
+                f"📈 鸡腿变化: +{delta}，当前鸡腿：{after}"
+            )
 
         return (
-            f"✅ **签到成功**\n"
+            f"🎉 签到成功！\n"
             f"📈 鸡腿变化: +{delta}\n"
             f"💰 当前鸡腿: {after}"
         )
     else:
-        return f"❌ **签到失败**\n{result.get('message', '未知错误')}"
+        return f"❌ 签到失败\n{result.get('message', '未知错误')}"
 
 
 def format_stats_summary(accounts: list) -> str:

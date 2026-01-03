@@ -88,13 +88,17 @@ class DeepFloodAdapter(SiteAdapter):
                 }
             elif "已完成签到" in msg:
                 logger.info(f"DeepFlood 今日已签到: 站点 deepflood 用户 {account.site_username}")
+                # 获取当前积分和今日鸡腿变化
+                credits_after, today_delta = await self._fetch_credits_and_delta(account.cookie, session)
+                if credits_after is None:
+                    credits_after = credits_before
                 return {
                     "success": True,
                     "status": CheckinStatus.SUCCESS,
                     "message": msg,
-                    "credits_delta": 0,
+                    "credits_delta": today_delta,
                     "credits_before": credits_before,
-                    "credits_after": credits_before,
+                    "credits_after": credits_after,
                     "username": account.site_username,
                     "site": SiteType.DEEPFLOOD,
                 }
@@ -233,3 +237,73 @@ class DeepFloodAdapter(SiteAdapter):
                     logger.warning(f"获取积分失败: {e}")
 
         return None
+
+    async def _fetch_credits_and_delta(
+        self,
+        cookie: str,
+        session: AsyncSession,
+    ) -> tuple[int | None, int]:
+        """
+        获取积分和今日鸡腿变化（内部方法）
+
+        Returns:
+            (balance, today_delta): balance 为当前总积分，today_delta 为今日获得的鸡腿数
+        """
+        import asyncio
+        from datetime import datetime, timedelta
+        from checkin_bot.core.timezone import now
+
+        headers = DEFAULT_HTTP_HEADERS.copy()
+        headers["Cookie"] = cookie
+        headers["origin"] = self.config["base_url"]
+        headers["referer"] = f"{self.config['base_url']}/board"
+
+        url = f"{self.config['api_base']}{self.config['credit_api']}/page-1"
+
+        # 最多重试 3 次
+        for attempt in range(3):
+            try:
+                response = await session.get(
+                    url,
+                    headers=headers,
+                    timeout=DEFAULT_TIMEOUT,
+                )
+
+                if response.status_code != 200:
+                    if response.status_code == 403 and attempt < 2:
+                        await asyncio.sleep(2)
+                        continue
+                    return None, 0
+
+                data = response.json()
+                if not data.get("success") or not data.get("data"):
+                    return None, 0
+
+                records = data["data"]
+                if not isinstance(records, list) or len(records) == 0:
+                    return None, 0
+
+                first_record = records[0]
+                if not isinstance(first_record, list) or len(first_record) < 4:
+                    return None, 0
+
+                balance = first_record[1]
+                amount = first_record[0]
+                description = first_record[2]
+
+                # 检查第一条记录是否是今天的签到记录
+                # 格式: "签到收益5个鸡腿"
+                today_delta = 0
+                if "签到" in description and "鸡腿" in description:
+                    today_delta = amount
+
+                logger.info(f"DeepFlood 获取积分成功: balance={balance}, today_delta={today_delta}")
+                return balance, today_delta
+
+            except (errors.RequestsError, ValueError) as e:
+                if attempt < 2:
+                    await asyncio.sleep(2)
+                else:
+                    logger.warning(f"获取积分失败: {e}")
+
+        return None, 0

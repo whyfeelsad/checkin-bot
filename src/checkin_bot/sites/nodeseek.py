@@ -88,13 +88,17 @@ class NodeSeekAdapter(SiteAdapter):
                 }
             elif "已完成签到" in msg:
                 logger.info(f"NodeSeek 今日已签到: 站点 nodeseek 用户 {account.site_username}")
+                # 获取当前鸡腿数和今日鸡腿变化
+                credits_after, today_delta = await self._fetch_credits_and_delta(account.cookie, session)
+                if credits_after is None:
+                    credits_after = credits_before
                 return {
                     "success": True,
                     "status": CheckinStatus.SUCCESS,
                     "message": msg,
-                    "credits_delta": 0,
+                    "credits_delta": today_delta,
                     "credits_before": credits_before,
-                    "credits_after": credits_before,
+                    "credits_after": credits_after,
                     "username": account.site_username,
                     "site": SiteType.NODESEEK,
                 }
@@ -228,3 +232,68 @@ class NodeSeekAdapter(SiteAdapter):
                     logger.warning(f"获取鸡腿数失败: {e}")
 
         return None
+
+    async def _fetch_credits_and_delta(
+        self,
+        cookie: str,
+        session: AsyncSession,
+    ) -> tuple[int | None, int]:
+        """
+        获取鸡腿数和今日鸡腿变化（内部方法）
+
+        Returns:
+            (balance, today_delta): balance 为当前总鸡腿数，today_delta 为今日获得的鸡腿数
+        """
+        import asyncio
+
+        headers = DEFAULT_HTTP_HEADERS.copy()
+        headers["Cookie"] = cookie
+        headers["origin"] = self.config["base_url"]
+        headers["referer"] = f"{self.config['base_url']}/board"
+
+        url = f"{self.config['api_base']}{self.config['credit_api']}/page-1"
+
+        # 最多重试 3 次
+        for attempt in range(3):
+            try:
+                response = await session.get(
+                    url,
+                    headers=headers,
+                    timeout=DEFAULT_TIMEOUT,
+                )
+
+                if response.status_code != 200:
+                    if response.status_code == 403 and attempt < 2:
+                        await asyncio.sleep(2)
+                        continue
+                    return None, 0
+
+                data = response.json()
+                if data.get("success") and data.get("data"):
+                    records = data["data"]
+                    if isinstance(records, list) and len(records) > 0:
+                        first_record = records[0]
+                        if isinstance(first_record, list) and len(first_record) >= 4:
+                            balance = first_record[1]
+                            amount = first_record[0]
+                            description = first_record[2]
+
+                            # 检查第一条记录是否是今天的签到记录
+                            # 格式: "签到收益5个鸡腿"
+                            today_delta = 0
+                            if "签到" in description and "鸡腿" in description:
+                                today_delta = amount
+
+                            logger.info(f"NodeSeek 获取鸡腿数成功: balance={balance}, today_delta={today_delta}")
+                            return balance, today_delta
+
+                return None, 0
+
+            except (errors.RequestsError, ValueError) as e:
+                if attempt < 2:
+                    logger.warning(f"获取鸡腿数失败，重试 ({attempt + 1}/3): {e}")
+                    await asyncio.sleep(2)
+                else:
+                    logger.warning(f"获取鸡腿数失败: {e}")
+
+        return None, 0
