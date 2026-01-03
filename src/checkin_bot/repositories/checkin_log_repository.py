@@ -110,10 +110,11 @@ class CheckinLogRepository(BaseRepository):
             SELECT executed_at FROM checkin_logs
             WHERE account_id = $1
             AND status = 'success'
-            AND executed_at > NOW() - INTERVAL '%s days'
+            AND executed_at > NOW() - INTERVAL '1 day' * $2
             ORDER BY executed_at DESC
-            """ % days,
+            """,
             account_id,
+            days,
         )
         await self._release_connection(conn)
 

@@ -1,24 +1,33 @@
-"""Repository 基类"""
+"""Repository base class"""
 
+import logging
 from abc import ABC, abstractmethod
 
 from checkin_bot.core.database import DatabaseConnection
 
+logger = logging.getLogger(__name__)
+
 
 class BaseRepository(ABC):
-    """Repository 基类"""
+    """Repository base class"""
 
     def __init__(self):
         self._db_context = None
 
     async def _get_connection(self):
-        """获取数据库连接"""
+        """Get database connection"""
         self._db_context = DatabaseConnection()
         conn = await self._db_context.__aenter__()
         return conn
 
     async def _release_connection(self, conn):
-        """释放数据库连接"""
+        """
+        Release database connection (with exception safety)
+        """
         if self._db_context:
-            await self._db_context.__aexit__(None, None, None)
-            self._db_context = None
+            try:
+                await self._db_context.__aexit__(None, None, None)
+            except Exception as e:
+                logger.warning(f"Error releasing database connection: {e}")
+            finally:
+                self._db_context = None
