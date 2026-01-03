@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -8,14 +6,14 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+RUN pip install --no-cache-dir uv
 
-# Copy source files first (needed for -e install)
-COPY pyproject.toml ./
+# Copy project files
+COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 
 # Install dependencies
-RUN uv pip install --system -e .
+RUN uv pip install --system .
 
 # Create data directory
 RUN mkdir -p /app/data
