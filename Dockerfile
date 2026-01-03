@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -11,10 +11,10 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 # Install dependencies
-RUN uv sync --no-dev --no-editable
+RUN uv pip install --system -e .
 
 # Copy source code
 COPY src/ ./src/
@@ -22,6 +22,4 @@ COPY src/ ./src/
 # Create data directory
 RUN mkdir -p /app/data
 
-ENV PATH="/app/.venv/bin:$PATH"
-
-ENTRYPOINT ["uv", "run", "checkin-bot"]
+ENTRYPOINT ["python", "-m", "checkin_bot.run"]
