@@ -24,12 +24,13 @@ class PermissionService:
         self.settings = get_settings()
         self.cache = get_cache()
 
-    async def check_permission(self, telegram_id: int) -> PermissionLevel:
+    async def check_permission(self, telegram_id: int, application=None) -> PermissionLevel:
         """
         检查用户权限
 
         Args:
             telegram_id: Telegram 用户 ID
+            application: Telegram Application 对象（可选，用于检查群组成员）
 
         Returns:
             权限级别
@@ -59,8 +60,12 @@ class PermissionService:
             return PermissionLevel.USER
 
         # 5. 检查群组和频道白名单
-        # 这里需要额外的上下文信息，暂不在缓存中处理
-        # 群组和频道检查在中间件中处理
+        if application and (self.settings.whitelist_group_ids or self.settings.whitelist_channel_ids):
+            is_in_group = await self.check_user_in_whitelist_groups(telegram_id, application)
+            if is_in_group:
+                # 用户在白名单群组/频道中，缓存并允许
+                await self.cache.set(telegram_id, True)
+                return PermissionLevel.USER
 
         # 默认不允许访问
         logger.debug(f"权限检查 {telegram_id}: 不在白名单中，拒绝")

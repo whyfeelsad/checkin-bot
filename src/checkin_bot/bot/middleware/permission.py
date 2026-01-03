@@ -29,19 +29,12 @@ class PermissionMiddleware(BaseHandler):
 
         telegram_id = update.effective_user.id
 
-        # 检查权限
-        level = await self.permission_service.check_permission(telegram_id)
+        # 检查权限（一次性完成所有检查）
+        level = await self.permission_service.check_permission(
+            telegram_id, context.application
+        )
 
         if level == PermissionLevel.NOT_WHITELISTED:
-            # 用户不在用户白名单中，检查是否在白名单群组/频道中
-            is_in_group = await self.permission_service.check_user_in_whitelist_groups(
-                telegram_id, context.application
-            )
-
-            if is_in_group:
-                # 用户在白名单群组/频道中，允许使用
-                return
-
             # 用户不在白名单中，发送提示消息
             if update.effective_message:
                 await update.effective_message.reply_text(
@@ -49,7 +42,7 @@ class PermissionMiddleware(BaseHandler):
                 )
             raise ApplicationHandlerStop  # 阻止继续处理
 
-        # 检查群组/频道权限
+        # 检查群组/频道权限（当 Bot 在群组/频道中被调用时）
         if update.effective_chat:
             chat_id = update.effective_chat.id
             chat_type = update.effective_chat.type
