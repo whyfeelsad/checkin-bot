@@ -21,7 +21,7 @@ from checkin_bot.bot.handlers.account_handlers import (
 from checkin_bot.bot.handlers.checkin import checkin_handler, checkin_status_handler
 from checkin_bot.bot.handlers.logs import logs_handler, view_logs_handler
 from checkin_bot.bot.handlers.stats import stats_handler
-from checkin_bot.bot.handlers.admin import admin_handler
+from checkin_bot.bot.handlers.admin import admin_handler, admin_view_user_handler
 from checkin_bot.bot.handlers.help import help_handler
 from checkin_bot.bot.middleware.permission import PermissionMiddleware
 from checkin_bot.config.settings import get_settings
@@ -61,6 +61,7 @@ def create_app() -> Application:
     app.add_handler(view_logs_handler)
     app.add_handler(stats_handler)
     app.add_handler(admin_handler)
+    app.add_handler(admin_view_user_handler)
     app.add_handler(help_handler)
     # 过期按钮处理器（作为兜底，放在最后）
     app.add_handler(expired_button_handler)

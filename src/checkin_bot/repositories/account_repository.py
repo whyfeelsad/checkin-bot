@@ -242,6 +242,29 @@ class AccountRepository(BaseRepository):
         finally:
             await self._release_connection(conn)
 
+    async def count_by_user(self, user_id: int) -> int:
+        """Count accounts for a user"""
+        conn = await self._get_connection()
+        try:
+            record = await conn.fetchrow(
+                "SELECT COUNT(*) as count FROM accounts WHERE user_id = $1 AND status = 'active'",
+                user_id,
+            )
+            return record["count"]
+        finally:
+            await self._release_connection(conn)
+
+    async def count_all_active(self) -> int:
+        """Count all active accounts"""
+        conn = await self._get_connection()
+        try:
+            record = await conn.fetchrow(
+                "SELECT COUNT(*) as count FROM accounts WHERE status = 'active'",
+            )
+            return record["count"]
+        finally:
+            await self._release_connection(conn)
+
     async def get_by_checkin_time(self, hour: int) -> List[Account]:
         """Get accounts with specific check-in hour"""
         conn = await self._get_connection()

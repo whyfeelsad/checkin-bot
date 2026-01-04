@@ -119,6 +119,17 @@ class UserRepository(BaseRepository):
         finally:
             await self._release_connection(conn)
 
+    async def get_all(self) -> list[User]:
+        """Get all users"""
+        conn = await self._get_connection()
+        try:
+            records = await conn.fetch(
+                "SELECT * FROM users ORDER BY created_at DESC",
+            )
+            return [self._to_model(record) for record in records]
+        finally:
+            await self._release_connection(conn)
+
     @staticmethod
     def _to_model(record) -> User:
         """Convert database record to model"""
