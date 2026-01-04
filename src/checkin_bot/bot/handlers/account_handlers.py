@@ -647,6 +647,111 @@ async def checkin_now_callback(
         )
 
 
+async def checkin_all_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """签到所有账号回调"""
+    if not is_valid_callback(update):
+        return
+
+    await answer_callback_query(update)
+
+    user = await get_user_or_error(update, return_none=True)
+    if not user:
+        return
+
+    # 获取用户的账号列表
+    account_manager = AccountManager()
+    accounts = await account_manager.get_user_accounts(user.id)
+
+    if not accounts:
+        await update.effective_message.edit_text(
+            "📝 您还没有添加任何账号",
+            reply_markup=get_account_added_keyboard(),
+        )
+        return
+
+    from checkin_bot.services.checkin import CheckinService
+    from checkin_bot.bot.keyboards.checkin import get_checkin_keyboard, get_back_to_checkin_list_keyboard
+
+    checkin_service = CheckinService()
+
+    # 记录当前页面，用于签到完成后返回
+    current_text = update.effective_message.text or ""
+    from_checkin_page = "请选择要签到的账号" in current_text
+
+    # 汇总结果
+    success_count = 0
+    failed_count = 0
+    total_delta = 0
+    results = []
+
+    # 依次签到每个账号
+    for account in accounts:
+        site_config = SiteConfig.get(account.site)
+        site_name = site_config["name"]
+
+        # 先尝试用现有 cookie 签到
+        result = await checkin_service.manual_checkin(account.id)
+
+        # 如果签到失败且错误是 cookie 相关，重新获取 cookie 后再试
+        if not result["success"] and result.get("error_code") in ("invalid_cookie", "blocked"):
+            logger.info(f"Cookie 失败，重新获取: 账号 {account.id}")
+            update_result = await account_manager.update_account_cookie(
+                account.id,
+                update.effective_user.id,
+                progress_callback=None,
+                force=True,
+            )
+            if update_result["success"]:
+                # 重新获取账号（cookie 已更新）
+                account = await account_manager.account_repo.get_by_id(account.id)
+                result = await checkin_service.manual_checkin(account.id)
+
+        # 记录结果
+        if result["success"]:
+            success_count += 1
+            delta = result.get("credits_delta", 0)
+            total_delta += delta
+            results.append(f"✅ {site_name} ({account.site_username}): +{delta}")
+        else:
+            failed_count += 1
+            results.append(f"❌ {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
+
+    # 构建汇总消息
+    summary_lines = [
+        "📋 批量签到完成\n",
+        f"✅ 成功: {success_count}",
+        f"❌ 失败: {failed_count}",
+        f"📈 总鸡腿: +{total_delta}\n",
+        "───────",
+    ]
+    summary_lines.extend(results)
+
+    summary = "\n".join(summary_lines)
+
+    # 判断从哪个页面调用，返回相应的键盘
+    if from_checkin_page:
+        # 从签到页面调用，返回签到列表键盘
+        keyboard = get_back_to_checkin_list_keyboard()
+    elif "您的账号列表" in current_text:
+        # 从账号列表页面调用，返回账号列表键盘
+        keyboard = get_account_list_keyboard(accounts)
+    else:
+        # 从其他页面（如添加账号页面）调用，返回添加账号键盘
+        keyboard = get_account_added_keyboard()
+
+    try:
+        await update.effective_message.edit_text(
+            summary,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        if "not modified" not in str(e).lower():
+            logger.warning(f"编辑消息失败: {e}")
+
+
 async def retry_login_callback(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -1343,6 +1448,12 @@ back_to_menu_handler = CallbackQueryHandler(
 checkin_now_handler = CallbackQueryHandler(
     checkin_now_callback,
     pattern="^checkin_now$",
+)
+
+# 签到所有处理器
+checkin_all_handler = CallbackQueryHandler(
+    checkin_all_callback,
+    pattern="^checkin_all$",
 )
 
 

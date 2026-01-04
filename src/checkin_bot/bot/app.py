@@ -15,6 +15,7 @@ from checkin_bot.bot.handlers.account_handlers import (
     set_push_time_handler,
     back_to_menu_handler,
     checkin_now_handler,
+    checkin_all_handler,
     expired_button_handler,
 )
 from checkin_bot.bot.handlers.checkin import checkin_handler, checkin_status_handler
@@ -52,6 +53,7 @@ def create_app() -> Application:
     app.add_handler(set_checkin_time_handler)
     app.add_handler(set_push_time_handler)
     app.add_handler(checkin_now_handler)
+    app.add_handler(checkin_all_handler)
     app.add_handler(back_to_menu_handler)
     app.add_handler(checkin_handler)
     app.add_handler(checkin_status_handler)
