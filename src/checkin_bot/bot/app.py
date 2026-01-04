@@ -16,7 +16,6 @@ from checkin_bot.bot.handlers.account_handlers import (
     back_to_menu_handler,
     checkin_now_handler,
     checkin_all_handler,
-    expired_button_handler,
 )
 from checkin_bot.bot.handlers.checkin import checkin_handler, checkin_status_handler
 from checkin_bot.bot.handlers.logs import logs_handler, view_logs_handler
@@ -63,8 +62,6 @@ def create_app() -> Application:
     app.add_handler(admin_handler)
     app.add_handler(admin_view_user_handler)
     app.add_handler(help_handler)
-    # 过期按钮处理器（作为兜底，放在最后）
-    app.add_handler(expired_button_handler)
 
     # 注册错误处理器
     app.add_error_handler(error_handler)
