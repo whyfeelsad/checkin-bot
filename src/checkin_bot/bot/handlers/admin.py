@@ -38,7 +38,7 @@ def get_admin_user_list_keyboard(users_with_accounts: list) -> InlineKeyboardMar
     for user, account_count in users_with_accounts:
         # 显示用户名和账号数量
         username = user.first_name or user.telegram_username or f"用户{user.id}"
-        user_info = f"👤 {username} • 🆔 {user.telegram_id} • 📊 {account_count}账号"
+        user_info = f"👤 {username} • 🏷️ {user.telegram_id} • 💳 {account_count}账号"
         buttons.append([
             InlineKeyboardButton(
                 user_info,
