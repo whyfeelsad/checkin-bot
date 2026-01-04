@@ -106,30 +106,48 @@ class CheckinService:
         try:
             result = await adapter.checkin(account)
 
-            # 记录日志
-            await self.log_repo.create(
-                account_id=account.id,
-                site=account.site,
-                status=result["status"],
-                message=result.get("message"),
-                credits_delta=result.get("credits_delta", 0),
-                credits_before=result.get("credits_before"),
-                credits_after=result.get("credits_after"),
-                error_code=result.get("error_code"),
-            )
+            # 检查今日是否已有成功日志
+            has_today_log = await self.log_repo.get_today_success_count(account.id) > 0
+            should_increment = result["success"] and not has_today_log
 
-            # 更新账号鸡腿数
+            # 只在第一次成功签到时记录日志
+            if result["success"]:
+                if not has_today_log:
+                    # 第一次成功签到，记录日志
+                    await self.log_repo.create(
+                        account_id=account.id,
+                        site=account.site,
+                        status=result["status"],
+                        message=result.get("message"),
+                        credits_delta=result.get("credits_delta", 0),
+                        credits_before=result.get("credits_before"),
+                        credits_after=result.get("credits_after"),
+                        error_code=result.get("error_code"),
+                    )
+                    logger.info(f"{checkin_type}签到成功: 站点 {account.site.value} 用户 {account.site_username} +{result.get('credits_delta', 0)} 鸡腿")
+                else:
+                    logger.info(f"{checkin_type}签到成功: 站点 {account.site.value} 用户 {account.site_username} +{result.get('credits_delta', 0)} 鸡腿 (今日已记录)")
+            else:
+                # 签到失败，记录失败日志
+                await self.log_repo.create(
+                    account_id=account.id,
+                    site=account.site,
+                    status=result["status"],
+                    message=result.get("message"),
+                    credits_delta=result.get("credits_delta", 0),
+                    credits_before=result.get("credits_before"),
+                    credits_after=result.get("credits_after"),
+                    error_code=result.get("error_code"),
+                )
+                logger.warning(f"{checkin_type}签到失败: 站点 {account.site.value} 用户 {account.site_username} - {result.get('message')}")
+
+            # 更新账号鸡腿数和签到次数（只在第一次成功时增加计数）
             if result["success"] and result.get("credits_after") is not None:
                 await self.account_repo.update_credits(
                     account.id,
                     result["credits_after"],
-                    checkin_count_increment=1 if result["success"] else 0,
+                    checkin_count_increment=1 if should_increment else 0,
                 )
-
-            if result["success"]:
-                logger.info(f"{checkin_type}签到成功: 站点 {account.site.value} 用户 {account.site_username} +{result.get('credits_delta', 0)} 鸡腿")
-            else:
-                logger.warning(f"{checkin_type}签到失败: 站点 {account.site.value} 用户 {account.site_username} - {result.get('message')}")
 
             # 添加 user_id 到结果中
             result["user_id"] = account.user_id
