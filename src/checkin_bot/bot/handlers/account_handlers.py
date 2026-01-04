@@ -714,16 +714,16 @@ async def checkin_all_callback(
             success_count += 1
             delta = result.get("credits_delta", 0)
             total_delta += delta
-            results.append(f"✅ {site_name} ({account.site_username}): +{delta}")
+            results.append(f"✔ {site_name} ({account.site_username}): +{delta}")
         else:
             failed_count += 1
-            results.append(f"❌ {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
+            results.append(f"✖ {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
 
     # 构建汇总消息
     summary_lines = [
         "📋 批量签到完成\n",
-        f"✅ 成功: {success_count}",
-        f"❌ 失败: {failed_count}",
+        f"✔ 成功: {success_count}",
+        f"✖ 失败: {failed_count}",
         f"📈 总鸡腿: +{total_delta}\n",
         "───────",
     ]

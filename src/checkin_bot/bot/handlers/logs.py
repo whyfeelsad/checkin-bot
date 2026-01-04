@@ -62,18 +62,13 @@ async def logs_callback(
         lines.append("暂无签到记录")
     else:
         # 统计数据
-        total_logs = len(logs)
         success_logs = sum(1 for log in logs if log.status == CheckinStatus.SUCCESS)
         failed_logs = sum(1 for log in logs if log.status == CheckinStatus.FAILED)
         total_credits = sum(log.credits_delta for log in logs if log.status == CheckinStatus.SUCCESS)
-        success_rate = (success_logs / total_logs * 100) if total_logs > 0 else 0
 
-        # 添加统计摘要
-        lines.append("━━━━━━━━━━━━━━")
-        lines.append(f"📊 统计摘要")
-        lines.append(f"✅ 成功: {success_logs} | ❌ 失败: {failed_logs}")
-        lines.append(f"📈 成功率: {success_rate:.0f}% | 🍗 总收益: +{total_credits}")
-        lines.append("━━━━━━━━━━━━━━\n")
+        # 统计摘要（简化）
+        lines.append(f"✔ {success_logs} 成功 | ✖ {failed_logs} 失败")
+        lines.append(f"今日收益 🍗  x {total_credits}\n")
 
         # 按账号分组
         account_logs = {}
@@ -97,36 +92,29 @@ async def logs_callback(
             site_name = data["site_name"]
             account_logs_list = data["logs"]
 
-            # 账号统计
-            acc_success = sum(1 for log in account_logs_list if log.status == CheckinStatus.SUCCESS)
-            acc_credits = sum(log.credits_delta for log in account_logs_list if log.status == CheckinStatus.SUCCESS)
-
-            lines.append(f"📍 {site_name} - {account.site_username}")
-            lines.append(f"   🍗 {account.credits} | ✅ {acc_success} | +{acc_credits}")
+            lines.append(f"🔖 {site_name} • {account.site_username}")
 
             for log in account_logs_list:
                 # 状态图标
                 if log.status == CheckinStatus.SUCCESS:
-                    status_icon = "✅"
+                    status_icon = "✔"
                 elif log.status == CheckinStatus.FAILED:
-                    status_icon = "❌"
+                    status_icon = "✖"
                 else:
-                    status_icon = "⚠️"
+                    status_icon = "⚠"
 
-                # 时间格式化（转换为本地时区）
+                # 时间格式化
                 time_str = format_datetime(log.executed_at, "%m-%d %H:%M")
 
                 # 签到结果
                 if log.status == CheckinStatus.SUCCESS:
-                    result_str = f"+{log.credits_delta} 鸡腿"
+                    result_str = f"🍗 x {log.credits_delta}"
                 else:
                     result_str = log.message or "失败"
 
-                lines.append(f"  {status_icon} {time_str} | {result_str}")
+                lines.append(f"{status_icon}  {time_str} • {result_str}")
 
             lines.append("")  # 账号之间空行
-
-    lines.append("点击「返回菜单」返回主菜单")
 
     await update.effective_message.edit_text(
         "\n".join(lines),
@@ -183,16 +171,14 @@ async def view_logs_callback(
     lines = [
         f"📋 签到日志",
         f"",
-        f"📍 {site_config['name']} - {account.site_username}",
+        f"🔖 {site_config['name']} • {account.site_username}",
     ]
 
     if not logs:
         lines.extend([
             f"",
-            f"🍗 当前鸡腿数: {account.credits}",
-            f"🔢 累计签到: {account.checkin_count} 次",
+            f"🍗 {account.credits} | 🔢 {account.checkin_count} 次",
             f"",
-            "━━━━━━━━━━━━━━",
             "暂无签到记录",
         ])
     else:
@@ -221,44 +207,39 @@ async def view_logs_callback(
             trend = "➡️ 数据不足"
 
         lines.extend([
-            f"━━━━━━━━━━━━━━",
-            f"📊 本账号统计",
-            f"✅ 成功: {success_logs} | ❌ 失败: {failed_logs}",
-            f"📈 成功率: {success_rate:.0f}%",
-            f"🍗 总收益: +{total_credits}",
-            f"📡 趋势: {trend}",
-            f"━━━━━━━━━━━━━━",
             f"",
-            f"🍗 当前鸡腿: {account.credits} | 🔢 累计签到: {account.checkin_count} 次",
+            f"🍗 {account.credits} | 🔢 {account.checkin_count} 次",
             f"",
-            f"━━━━━━━━━━━━━━",
-            f"最近签到记录",
+            f"✔ {success_logs} 成功 | ✖ {failed_logs} 失败",
+            f"📈 {success_rate:.0f}% | 🍗  x {total_credits}",
+            f"📡 {trend}",
+            f"",
+            f"最近签到",
         ])
 
         for log in logs:
             # 状态图标
             if log.status == CheckinStatus.SUCCESS:
-                status_icon = "✅"
+                status_icon = "✔"
             elif log.status == CheckinStatus.FAILED:
-                status_icon = "❌"
+                status_icon = "✖"
             else:
-                status_icon = "⚠️"
+                status_icon = "⚠"
 
             # 时间格式化
             time_str = format_datetime(log.executed_at, "%m-%d %H:%M")
 
             # 签到结果
             if log.status == CheckinStatus.SUCCESS:
-                result_str = f"+{log.credits_delta} 鸡腿"
+                result_str = f"🍗 x {log.credits_delta}"
                 if log.credits_before is not None and log.credits_after is not None:
-                    result_str += f" ({log.credits_before} → {log.credits_after})"
+                    result_str += f" ({log.credits_before}→{log.credits_after})"
             else:
                 result_str = log.message or "失败"
 
-            lines.append(f"  {status_icon} {time_str} | {result_str}")
+            lines.append(f"{status_icon}  {time_str} • {result_str}")
 
     lines.append("")
-    lines.append("点击「返回菜单」返回主菜单")
 
     await update.effective_message.edit_text(
         "\n".join(lines),
