@@ -19,6 +19,8 @@ from checkin_bot.bot.keyboards.checkin import get_checkin_keyboard
 from checkin_bot.repositories.user_repository import UserRepository
 from checkin_bot.repositories.account_repository import AccountRepository
 from checkin_bot.services.permission import PermissionService
+from checkin_bot.services.account_manager import AccountManager
+from checkin_bot.config.constants import SiteConfig
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +48,11 @@ def get_admin_user_list_keyboard(users_with_accounts: list) -> InlineKeyboardMar
             )
         ])
 
-    # 返回后台管理按钮
-    buttons.append([InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu")])
+    # 批量签到和返回菜单按钮（同一行）
+    buttons.append([
+        InlineKeyboardButton("📋 批量签到", callback_data="admin_checkin_all"),
+        InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu"),
+    ])
 
     return InlineKeyboardMarkup(buttons)
 
@@ -162,6 +167,116 @@ async def admin_view_user_callback(
     )
 
 
+async def admin_checkin_all_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """管理员批量签到所有用户账号回调"""
+    if not update.effective_message or not update.callback_query:
+        return
+
+    await answer_callback_query(update)
+
+    user_id = update.effective_user.id
+
+    # 检查管理员权限
+    permission_service = PermissionService()
+    is_admin = await permission_service.is_admin(user_id)
+
+    if not is_admin:
+        await update.effective_message.edit_text(
+            "❌ 您没有权限访问此功能",
+            reply_markup=get_back_to_menu_keyboard(),
+        )
+        return
+
+    logger.info(f"管理员 {user_id} 触发批量签到所有用户")
+
+    # 获取所有账号
+    account_repo = AccountRepository()
+    all_accounts = await account_repo.get_all_active()
+
+    if not all_accounts:
+        await update.effective_message.edit_text("📝 系统中暂无账号")
+        return
+
+    from checkin_bot.services.checkin import CheckinService
+
+    checkin_service = CheckinService()
+    account_manager = AccountManager()
+
+    # 汇总结果
+    success_count = 0
+    failed_count = 0
+    total_delta = 0
+    results = []
+
+    # 依次签到每个账号
+    for account in all_accounts:
+        site_config = SiteConfig.get(account.site)
+        site_name = site_config["name"]
+
+        # 先尝试用现有 cookie 签到
+        result = await checkin_service.manual_checkin(account.id)
+
+        # 如果签到失败且错误是 cookie 相关，重新获取 cookie 后再试
+        if not result["success"] and result.get("error_code") in ("invalid_cookie", "blocked"):
+            logger.info(f"Cookie 失败，重新获取: 账号 {account.id}")
+            update_result = await account_manager.update_account_cookie(
+                account.id,
+                user_id,
+                progress_callback=None,
+                force=True,
+            )
+            if update_result["success"]:
+                # 重新获取账号（cookie 已更新）
+                account = await account_repo.get_by_id(account.id)
+                result = await checkin_service.manual_checkin(account.id)
+
+        # 记录结果
+        if result["success"]:
+            success_count += 1
+            delta = result.get("credits_delta", 0)
+            total_delta += delta
+            results.append(f"✅ {site_name} ({account.site_username}): +{delta}")
+        else:
+            failed_count += 1
+            results.append(f"❌ {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
+
+    # 构建汇总消息
+    summary_lines = [
+        "📋 批量签到完成\n",
+        f"✅ 成功: {success_count}",
+        f"❌ 失败: {failed_count}",
+        f"📈 总鸡腿: +{total_delta}\n",
+        "───────",
+    ]
+    summary_lines.extend(results)
+
+    summary = "\n".join(summary_lines)
+
+    # 获取最新的用户列表键盘
+    user_repo = UserRepository()
+    users = await user_repo.get_all()
+    users_with_accounts = []
+    for user in users:
+        account_count = await account_repo.count_by_user(user.id)
+        if account_count > 0:
+            users_with_accounts.append((user, account_count))
+
+    keyboard = get_admin_user_list_keyboard(users_with_accounts)
+
+    try:
+        await update.effective_message.edit_text(
+            summary,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        if "not modified" not in str(e).lower():
+            logger.warning(f"编辑消息失败: {e}")
+
+
 # Handler instances
 admin_handler = CallbackQueryHandler(admin_callback, pattern="^admin$")
 admin_view_user_handler = CallbackQueryHandler(admin_view_user_callback, pattern="^admin_user_")
+admin_checkin_all_handler = CallbackQueryHandler(admin_checkin_all_callback, pattern="^admin_checkin_all$")

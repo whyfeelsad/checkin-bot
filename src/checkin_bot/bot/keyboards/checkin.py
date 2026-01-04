@@ -28,10 +28,11 @@ def get_checkin_keyboard(accounts: list) -> InlineKeyboardMarkup:
             ]
         )
 
-    # 签到所有按钮（在返回菜单按钮上方）
-    buttons.append([InlineKeyboardButton("📋 批量签到", callback_data="checkin_all")])
-    # 返回菜单按钮
-    buttons.append([InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu")])
+    # 批量签到和返回菜单按钮（同一行）
+    buttons.append([
+        InlineKeyboardButton("📋 批量签到", callback_data="checkin_all"),
+        InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu"),
+    ])
 
     return InlineKeyboardMarkup(buttons)
 
