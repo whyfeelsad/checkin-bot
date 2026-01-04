@@ -99,6 +99,7 @@ class CheckinService:
                 "credits_after": account.credits,
                 "username": account.site_username,
                 "site": account.site,
+                "user_id": account.user_id,
             }
 
         adapter = self._get_adapter(account.site)
@@ -131,6 +132,9 @@ class CheckinService:
             else:
                 logger.warning(f"{checkin_type}签到失败: 站点 {account.site.value} 用户 {account.site_username} - {result.get('message')}")
 
+            # 添加 user_id 到结果中
+            result["user_id"] = account.user_id
+
             return result
 
         except Exception as e:
@@ -139,6 +143,7 @@ class CheckinService:
                 "success": False,
                 "message": f"签到异常: {str(e)}",
                 "status": CheckinStatus.FAILED,
+                "user_id": account.user_id,
             }
 
     async def scheduled_checkin(self) -> list[dict]:

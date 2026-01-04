@@ -254,6 +254,18 @@ class AccountRepository(BaseRepository):
         finally:
             await self._release_connection(conn)
 
+    async def get_by_push_time(self, hour: int) -> List[Account]:
+        """Get accounts with specific push hour"""
+        conn = await self._get_connection()
+        try:
+            records = await conn.fetch(
+                "SELECT * FROM accounts WHERE push_hour = $1 AND status = 'active'",
+                hour,
+            )
+            return [self._to_model(record) for record in records]
+        finally:
+            await self._release_connection(conn)
+
     @staticmethod
     def _to_model(record) -> Account:
         """Convert database record to model"""

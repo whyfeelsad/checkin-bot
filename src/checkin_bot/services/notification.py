@@ -5,7 +5,9 @@ from collections import defaultdict
 
 from checkin_bot.config.constants import SiteConfig, SiteType
 from checkin_bot.core.timezone import now, format_datetime
+from checkin_bot.models.checkin_log import CheckinLog
 from checkin_bot.repositories.account_repository import AccountRepository
+from checkin_bot.repositories.checkin_log_repository import CheckinLogRepository
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,7 @@ class NotificationService:
 
     def __init__(self):
         self.account_repo = AccountRepository()
+        self.log_repo = CheckinLogRepository()
 
     async def format_checkin_results(
         self,
@@ -107,3 +110,45 @@ class NotificationService:
         # 这里应该从缓存或临时存储获取最近的签到结果
         # 暂时返回空列表，实际应该从消息队列获取
         return []
+
+    async def format_today_logs(
+        self,
+        user_id: int,
+        account_ids: list[int],
+    ) -> str | None:
+        """
+        格式化今日签到日志为推送消息
+
+        Args:
+            user_id: 用户 ID
+            account_ids: 账号 ID 列表
+
+        Returns:
+            推送消息，如果没有日志则返回 None
+        """
+        logs = await self.log_repo.get_today_by_account_ids(account_ids)
+
+        if not logs:
+            return None
+
+        # 获取账号信息映射
+        accounts = {acc.id: acc for acc in await self.account_repo.get_by_user(user_id)}
+
+        # 构建结果字典（与 format_checkin_results 兼容的格式）
+        results = []
+        for log in logs:
+            account = accounts.get(log.account_id)
+            if not account:
+                continue
+
+            results.append({
+                "success": log.status.value == "success",
+                "status": log.status,
+                "message": log.message,
+                "credits_delta": log.credits_delta,
+                "credits_after": log.credits_after,
+                "username": account.site_username,
+                "site": log.site,
+            })
+
+        return self._format_user_message(results) if results else None

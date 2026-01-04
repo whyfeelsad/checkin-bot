@@ -193,6 +193,26 @@ class CheckinLogRepository(BaseRepository):
         finally:
             await self._release_connection(conn)
 
+    async def get_today_by_account_ids(self, account_ids: List[int]) -> List[CheckinLog]:
+        """Get today's check-in logs for specific accounts"""
+        if not account_ids:
+            return []
+
+        conn = await self._get_connection()
+        try:
+            records = await conn.fetch(
+                """
+                SELECT * FROM checkin_logs
+                WHERE account_id = ANY($1)
+                AND DATE(executed_at) = CURRENT_DATE
+                ORDER BY executed_at DESC
+                """,
+                account_ids,
+            )
+            return [self._to_model(record) for record in records]
+        finally:
+            await self._release_connection(conn)
+
     @staticmethod
     def _to_model(record) -> CheckinLog:
         """Convert database record to model"""
