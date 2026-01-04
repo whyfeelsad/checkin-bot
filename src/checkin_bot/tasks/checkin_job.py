@@ -7,6 +7,7 @@ from telegram.ext import Application
 
 from checkin_bot.core.timezone import now
 from checkin_bot.repositories.account_repository import AccountRepository
+from checkin_bot.repositories.user_repository import UserRepository
 from checkin_bot.services.checkin import CheckinService
 from checkin_bot.services.notification import NotificationService
 
@@ -51,6 +52,7 @@ def register_push_job(app: Application):
         app: Bot 应用实例
     """
     account_repo = AccountRepository()
+    user_repo = UserRepository()
     notification_service = NotificationService()
 
     async def push_job_callback(context):
@@ -83,6 +85,12 @@ def register_push_job(app: Application):
             sent_count = 0
             for user_id, user_account_list in user_accounts.items():
                 try:
+                    # 获取用户的 telegram_id
+                    user = await user_repo.get_by_id(user_id)
+                    if not user:
+                        logger.warning(f"用户不存在: ID={user_id}")
+                        continue
+
                     account_ids = [acc.id for acc in user_account_list]
                     message = await notification_service.format_today_logs(
                         user_id, account_ids
@@ -90,12 +98,12 @@ def register_push_job(app: Application):
 
                     if message:
                         await context.bot.send_message(
-                            chat_id=user_id,
+                            chat_id=user.telegram_id,
                             text=message,
                             parse_mode="Markdown",
                         )
                         sent_count += 1
-                        logger.info(f"已发送签到通知给用户 {user_id}")
+                        logger.info(f"已发送签到通知给用户 {user_id} (telegram_id={user.telegram_id})")
                     else:
                         logger.debug(f"用户 {user_id} 今日暂无签到记录")
 
