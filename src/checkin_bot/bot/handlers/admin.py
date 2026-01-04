@@ -96,7 +96,7 @@ async def admin_callback(
     keyboard = get_admin_user_list_keyboard(users_with_accounts)
 
     # 生成统计消息
-    text = f"🕹️ 控制台 • 👥 {len(users)} 用户 • 📦 {total_accounts} 账号"
+    text = f"⚙️ 管理后台 • 👥 {len(users_with_accounts)} 用户 • 📦 {total_accounts} 账号"
 
     await update.effective_message.edit_text(
         text,
