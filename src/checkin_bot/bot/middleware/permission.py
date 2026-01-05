@@ -2,7 +2,7 @@
 
 import logging
 from telegram import Update
-from telegram.ext import BaseHandler, ContextTypes, DispatcherHandlerStop
+from telegram.ext import BaseHandler, ContextTypes, StopPropagation
 
 from checkin_bot.services.permission import PermissionLevel, PermissionService
 
@@ -83,7 +83,7 @@ class PermissionMiddleware(BaseHandler):
             except Exception as e:
                 logger.error(f"发送权限拒绝消息失败: {e}")
 
-            raise DispatcherHandlerStop  # 阻止继续处理
+            raise StopPropagation  # 阻止继续处理
 
         # 权限检查通过，继续由其他 handler 处理
         logger.info(f"权限中间件: 用户 {telegram_id} 权限检查通过")
