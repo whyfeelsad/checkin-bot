@@ -51,6 +51,7 @@ async def get_user_or_error(
 async def show_account_list(
     update: Update,
     user_id: int,
+    context: ContextTypes.DEFAULT_TYPE | None = None,
     empty_message: str = "📝 您还没有添加任何账号",
     update_status: dict[int, str] | None = None,
 ) -> bool:
@@ -60,6 +61,7 @@ async def show_account_list(
     Args:
         update: Telegram 更新对象
         user_id: 用户 ID
+        context: Bot 上下文（用于检查管理员查看其他用户账号的情况）
         empty_message: 空列表时的提示消息
         update_status: 更新状态字典 {account_id: status}，status 可为 'updating' 或 'completed'
 
@@ -77,9 +79,25 @@ async def show_account_list(
         return False
 
     keyboard = get_account_list_keyboard(accounts, update_status)
+
+    # 检查是否是管理员在查看其他用户的账号
+    is_admin_viewing = False
+    title = f"📋 您的账号列表（共 {len(accounts)} 个）"
+
+    if context and context.user_data:
+        admin_viewing_user_id = context.user_data.get("admin_viewing_user_id")
+        if admin_viewing_user_id and admin_viewing_user_id == user_id:
+            is_admin_viewing = True
+            # 获取目标用户信息
+            from checkin_bot.repositories.user_repository import UserRepository
+            user_repo = UserRepository()
+            target_user = await user_repo.get_by_id(user_id)
+            username = target_user.first_name or target_user.telegram_username or f"用户{user_id}"
+            title = f"👤 {username} 的账号列表（共 {len(accounts)} 个）"
+
     try:
         await update.effective_message.edit_text(
-            f"📋 您的账号列表（共 {len(accounts)} 个）",
+            title,
             reply_markup=keyboard,
         )
     except BadRequest as e:

@@ -142,6 +142,11 @@ async def admin_view_user_callback(
 
     logger.info(f"管理员 {user_id} 查看用户 {target_user_id} 的账号")
 
+    # 保存正在查看的用户 ID（用于后续回调刷新列表）
+    if context.user_data is None:
+        context.user_data = {}
+    context.user_data["admin_viewing_user_id"] = target_user_id
+
     # 获取目标用户的账号
     account_repo = AccountRepository()
     accounts = await account_repo.get_by_user(target_user_id)

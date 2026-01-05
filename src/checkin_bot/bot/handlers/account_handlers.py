@@ -60,6 +60,15 @@ async def cancel_callback(
     if not is_valid_callback(update):
         return ConversationHandler.END
 
+    # 检查是否是管理员在查看其他用户的账号
+    if context and context.user_data and context.user_data.get("admin_viewing_user_id"):
+        # 清除查看标记并返回管理后台
+        context.user_data.pop("admin_viewing_user_id", None)
+        # 重新触发 admin 回调返回管理面板
+        from checkin_bot.bot.handlers.admin import admin_callback
+        await admin_callback(update, context)
+        return ConversationHandler.END
+
     await return_to_main_menu(update, context)
     return ConversationHandler.END
 
@@ -1049,7 +1058,7 @@ async def my_accounts_callback(
     if context.user_data:
         context.user_data.pop("update_status", None)
 
-    await show_account_list(update, user.id)
+    await show_account_list(update, user.id, context)
 
 
 async def delete_account_callback(
@@ -1150,7 +1159,7 @@ async def delete_account_confirm(
 
     if result["success"]:
         # 删除成功后直接返回账号列表
-        await show_account_list(update, user.id)
+        await show_account_list(update, user.id, context)
     else:
         await update.effective_message.edit_text(f"❌ {result['message']}")
 
@@ -1171,7 +1180,7 @@ async def back_to_my_accounts_callback(
     if not user:
         return ConversationHandler.END
 
-    await show_account_list(update, user.id)
+    await show_account_list(update, user.id, context)
     return ConversationHandler.END  # 结束对话，允许再次进入删除流程
 
 
@@ -1213,7 +1222,7 @@ async def update_cookie_callback(
     context.user_data["update_status"][account_id] = "updating"
 
     # 刷新列表显示更新中状态
-    await show_account_list(update, user.id, update_status=context.user_data.get("update_status"))
+    await show_account_list(update, user.id, context, update_status=context.user_data.get("update_status"))
 
     # 在后台更新 Cookie（不发送进度消息）
     account_manager = AccountManager()
@@ -1232,7 +1241,7 @@ async def update_cookie_callback(
         context.user_data["update_status"][account_id] = "failed"
 
     # 刷新列表显示更新后的状态
-    await show_account_list(update, user.id, update_status=context.user_data.get("update_status"))
+    await show_account_list(update, user.id, context, update_status=context.user_data.get("update_status"))
 
 
 async def toggle_mode_callback(
@@ -1265,7 +1274,7 @@ async def toggle_mode_callback(
 
     # 直接刷新列表显示更新后的状态
     update_status = context.user_data.get("update_status") if context.user_data else None
-    await show_account_list(update, user.id, update_status=update_status)
+    await show_account_list(update, user.id, context, update_status=update_status)
 
 
 async def set_checkin_time_callback(
@@ -1316,7 +1325,7 @@ async def set_checkin_time_callback(
 
     # 直接刷新列表显示更新后的状态
     update_status = context.user_data.get("update_status") if context.user_data else None
-    await show_account_list(update, user.id, update_status=update_status)
+    await show_account_list(update, user.id, context, update_status=update_status)
 
 
 async def set_push_time_callback(
@@ -1367,7 +1376,7 @@ async def set_push_time_callback(
 
     # 直接刷新列表显示更新后的状态
     update_status = context.user_data.get("update_status") if context.user_data else None
-    await show_account_list(update, user.id, update_status=update_status)
+    await show_account_list(update, user.id, context, update_status=update_status)
 
 
 # 创建处理器
