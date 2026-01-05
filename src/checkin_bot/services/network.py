@@ -9,7 +9,7 @@ from checkin_bot.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-IP_API_URL = "https://api.ip.sb/geoip"
+IP_API_URL = "https://ipinfo.io/"
 
 
 class NetworkService:
@@ -57,14 +57,27 @@ class NetworkService:
         Returns:
             格式化后的文本
         """
+        # 解析 org 字段获取 ASN 信息
+        org = ip_data.get('org', 'N/A')
+        # org 格式通常为 "AS45102 Alibaba (US) Technology Co., Ltd."
+        # 提取 ASN 号码和组织名称
+        asn = 'N/A'
+        org_name = org
+        if org and org.startswith('AS') and ' ' in org:
+            parts = org.split(' ', 1)
+            if parts[0].startswith('AS'):
+                asn = parts[0]
+                org_name = parts[1] if len(parts) > 1 else 'N/A'
+
         lines = [
             "🌐 网络信息",
             "",
             f"📍 IP 地址: {ip_data.get('ip', 'N/A')}",
-            f"🏳️ 国家/地区: {ip_data.get('country', 'N/A')} ({ip_data.get('country_code', 'N/A')})",
+            f"🏳️ 国家/地区: {ip_data.get('country', 'N/A')}",
             f"🏙️ 城市: {ip_data.get('city', 'N/A')}",
-            f"🏢 组织/ISP: {ip_data.get('organization', ip_data.get('isp', 'N/A'))}",
-            f"📡 ASN: {ip_data.get('asn', 'N/A')} - {ip_data.get('asn_organization', 'N/A')}",
+            f"📍 地区: {ip_data.get('region', 'N/A')}",
+            f"🏢 组织/ISP: {org_name}",
+            f"📡 ASN: {asn}",
             f"🌍 时区: {ip_data.get('timezone', 'N/A')}",
         ]
 
