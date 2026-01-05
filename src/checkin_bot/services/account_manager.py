@@ -15,6 +15,7 @@ from checkin_bot.core.encryption import decrypt_password, encrypt_password
 from checkin_bot.repositories.account_repository import AccountRepository
 from checkin_bot.repositories.account_update_repository import AccountUpdateRepository
 from checkin_bot.repositories.user_repository import UserRepository
+from checkin_bot.services.permission import PermissionService
 from checkin_bot.services.site_auth import SiteAuthService
 from checkin_bot.sites.base import SiteAdapter
 from checkin_bot.sites.nodeseek import NodeSeekAdapter
@@ -31,6 +32,7 @@ class AccountManager:
         self.account_repo = AccountRepository()
         self.update_repo = AccountUpdateRepository()
         self._auth_service = None  # 延迟初始化
+        self._permission_service = None  # 延迟初始化
 
     @property
     def auth_service(self) -> SiteAuthService:
@@ -38,6 +40,13 @@ class AccountManager:
         if self._auth_service is None:
             self._auth_service = SiteAuthService()
         return self._auth_service
+
+    @property
+    def permission_service(self) -> PermissionService:
+        """获取权限服务（延迟初始化）"""
+        if self._permission_service is None:
+            self._permission_service = PermissionService()
+        return self._permission_service
 
     async def add_account(
         self,
@@ -222,11 +231,15 @@ class AccountManager:
             }
 
         if account.user_id != user.id:
-            logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试删除不属于自己的账号 {account_id} (所有者: {account.user_id})")
-            return {
-                "success": False,
-                "message": "无权删除此账号",
-            }
+            # 检查是否是管理员
+            is_admin = await self.permission_service.is_admin(telegram_id)
+            if not is_admin:
+                logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试删除不属于自己的账号 {account_id} (所有者: {account.user_id})")
+                return {
+                    "success": False,
+                    "message": "无权删除此账号",
+                }
+            logger.info(f"管理员 {user.id} (Telegram ID={telegram_id}) 删除用户 {account.user_id} 的账号 {account_id}")
 
         success = await self.account_repo.delete(account_id)
 
@@ -283,11 +296,15 @@ class AccountManager:
             }
 
         if account.user_id != user.id:
-            logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试修改不属于自己的账号 {account_id} (所有者: {account.user_id})")
-            return {
-                "success": False,
-                "message": "无权更新此账号",
-            }
+            # 检查是否是管理员
+            is_admin = await self.permission_service.is_admin(telegram_id)
+            if not is_admin:
+                logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试修改不属于自己的账号 {account_id} (所有者: {account.user_id})")
+                return {
+                    "success": False,
+                    "message": "无权更新此账号",
+                }
+            logger.info(f"管理员 {user.id} (Telegram ID={telegram_id}) 操作用户 {account.user_id} 的账号 {account_id}")
 
         # 1. 创建或强制创建更新记录
         if force:
@@ -395,11 +412,15 @@ class AccountManager:
             }
 
         if account.user_id != user.id:
-            logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试修改不属于自己的账号 {account_id} (所有者: {account.user_id})")
-            return {
-                "success": False,
-                "message": "无权修改此账号",
-            }
+            # 检查是否是管理员
+            is_admin = await self.permission_service.is_admin(telegram_id)
+            if not is_admin:
+                logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试修改不属于自己的账号 {account_id} (所有者: {account.user_id})")
+                return {
+                    "success": False,
+                    "message": "无权修改此账号",
+                }
+            logger.info(f"管理员 {user.id} (Telegram ID={telegram_id}) 操作用户 {account.user_id} 的账号 {account_id}")
 
         # 如果传入 None，保留原有值
         final_checkin_hour = account.checkin_hour if checkin_hour is None else checkin_hour
@@ -453,11 +474,15 @@ class AccountManager:
             }
 
         if account.user_id != user.id:
-            logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试修改不属于自己的账号 {account_id} (所有者: {account.user_id})")
-            return {
-                "success": False,
-                "message": "无权修改此账号",
-            }
+            # 检查是否是管理员
+            is_admin = await self.permission_service.is_admin(telegram_id)
+            if not is_admin:
+                logger.warning(f"用户 {user.id} (Telegram ID={telegram_id}) 尝试修改不属于自己的账号 {account_id} (所有者: {account.user_id})")
+                return {
+                    "success": False,
+                    "message": "无权修改此账号",
+                }
+            logger.info(f"管理员 {user.id} (Telegram ID={telegram_id}) 操作用户 {account.user_id} 的账号 {account_id}")
 
         # 切换模式
         new_mode = (
