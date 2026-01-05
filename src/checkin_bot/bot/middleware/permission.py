@@ -10,35 +10,39 @@ logger = logging.getLogger(__name__)
 
 
 class PermissionMiddleware(BaseHandler):
-    """权限中间件"""
+    """权限中间件 - 对所有更新进行权限检查"""
 
     def __init__(self):
-        super().__init__()
+        # BaseHandler 需要一个 callback 参数
+        super().__init__(callback=self._check_permission)
         self.permission_service = PermissionService()
 
     def check_update(self, update: Update) -> bool:
-        """检查是否需要处理此更新"""
-        # 所有更新都需要经过权限检查
-        return True
+        """
+        检查是否应该处理此更新
 
-    async def handle_update(
+        对于权限中间件，我们需要检查所有更新，所以总是返回 True
+        """
+        # 只要有有效的用户就检查权限
+        return update.effective_user is not None
+
+    async def _check_permission(
         self,
         update: Update,
-        application: object,  # Application 对象
-        *args,
-        **kwargs
+        context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
         """
-        处理更新 - BaseHandler 的正确方法
+        权限检查方法
 
         Args:
             update: Telegram 更新对象
-            application: Application 对象（包含 bot 实例）
+            context: Bot 上下文
         """
         if not update.effective_user:
             return
 
         telegram_id = update.effective_user.id
+        application = context.application
 
         # 诊断：记录 application 的详细信息
         logger.debug(
