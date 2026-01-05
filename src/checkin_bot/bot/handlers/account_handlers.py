@@ -186,8 +186,8 @@ async def add_account_credentials(
     # 删除用户消息保护隐私
     try:
         await update.effective_message.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"删除消息失败（可能是已被删除或无权限）: {e}")
 
     # 获取会话数据
     session_repo = SessionRepository()
@@ -266,8 +266,9 @@ async def add_account_credentials(
                 text="⚔️ 与 Cloudflare 的终极对决中\n⏳ 当前进度 ▰▱▱▱▱▱▱▱▱ 0%",
             )
             progress_msg_id = prompt_message_id
-        except Exception:
+        except Exception as e:
             # 如果编辑失败（消息可能已被删除），发送新消息
+            logger.debug(f"编辑进度消息失败，将发送新消息: {e}")
             msg = await context.bot.send_message(chat_id, "⚔️ 与 Cloudflare 的终极对决中\n⏳ 当前进度 ▰▱▱▱▱▱▱▱▱ 0%")
             progress_msg_id = msg.message_id
     else:

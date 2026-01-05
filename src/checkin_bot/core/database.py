@@ -204,6 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_site ON accounts(site);
 CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);
+CREATE INDEX IF NOT EXISTS idx_accounts_user_status ON accounts(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_accounts_checkin_hour ON accounts(checkin_hour) WHERE checkin_hour IS NOT NULL;
 
 -- 签到日志表索引
