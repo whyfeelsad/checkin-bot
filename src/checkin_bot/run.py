@@ -50,13 +50,34 @@ LOG_LEVEL_NAMES = {
 }
 
 
+# 必须在导入 telegram 模块之前设置过滤器
+warnings.filterwarnings("ignore", message=".*per_message.*")
+
+# 导入配置
+from checkin_bot.config.settings import get_settings
+from checkin_bot.core.timezone import get_timezone
+
+# 获取配置
+settings = get_settings()
+TZ = get_timezone()
+
+
 class ColorFormatter(logging.Formatter):
     """带颜色和对齐的日志格式化器"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def formatTime(self, record, datefmt=None):
-        """去掉毫秒的时间格式化器"""
+        """使用配置时区的时间格式化器"""
         import time
-        ct = self.converter(record.created)
+        from datetime import datetime
+
+        # 将 UTC 时间戳转换为配置时区
+        dt = datetime.fromtimestamp(record.created, tz=TZ)
+        # 转换为本地时间结构（去掉时区信息）
+        ct = dt.replace(tzinfo=None).timetuple()
+
         if datefmt:
             s = time.strftime(datefmt, ct)
         else:
@@ -81,16 +102,6 @@ class ColorFormatter(logging.Formatter):
             result = f"{level_color}{result}{Colors.RESET}"
 
         return result
-
-
-# 必须在导入 telegram 模块之前设置过滤器
-warnings.filterwarnings("ignore", message=".*per_message.*")
-
-# 导入配置
-from checkin_bot.config.settings import get_settings
-
-# 获取配置
-settings = get_settings()
 
 # 使用配置的日志级别
 logging.basicConfig(
