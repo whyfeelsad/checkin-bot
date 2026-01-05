@@ -107,12 +107,21 @@ class Settings(BaseSettings):
         """
         获取用于 curl_cffi 的代理配置
 
+        使用 socks5h:// 协议（对应 curl 的 --socks5-hostname），
+        让代理服务器进行 DNS 解析。
+
         Returns:
             代理配置字典，未配置时返回 None
         """
         if not self.socks5_proxy:
             return None
-        return {"proxies": {"http": self.socks5_proxy, "https": self.socks5_proxy}}
+
+        # 将 socks5:// 转换为 socks5h://（remote DNS resolution）
+        proxy_url = self.socks5_proxy
+        if proxy_url.startswith("socks5://"):
+            proxy_url = proxy_url.replace("socks5://", "socks5h://", 1)
+
+        return {"proxies": {"http": proxy_url, "https": proxy_url}}
 
     @property
     def telegram_proxy_url(self) -> str | None:
