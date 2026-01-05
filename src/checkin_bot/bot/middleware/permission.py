@@ -13,7 +13,7 @@ class PermissionMiddleware(BaseHandler):
     """权限中间件"""
 
     def __init__(self):
-        super().__init__(callback=self.check_permission)
+        super().__init__()
         self.permission_service = PermissionService()
 
     def check_update(self, update: Update) -> bool:
@@ -21,20 +21,36 @@ class PermissionMiddleware(BaseHandler):
         # 所有更新都需要经过权限检查
         return True
 
-    async def check_permission(
+    async def handle_update(
         self,
         update: Update,
-        context: ContextTypes.DEFAULT_TYPE,
+        application: object,  # Application 对象
+        *args,
+        **kwargs
     ) -> None:
-        """检查权限，通过则继续，失败则抛出 DispatcherHandlerStop"""
+        """
+        处理更新 - BaseHandler 的正确方法
+
+        Args:
+            update: Telegram 更新对象
+            application: Application 对象（包含 bot 实例）
+        """
         if not update.effective_user:
             return
 
         telegram_id = update.effective_user.id
 
+        # 诊断：记录 application 的详细信息
+        logger.debug(
+            f"权限中间件诊断: "
+            f"application类型={type(application).__name__}, "
+            f"有bot属性={hasattr(application, 'bot')}, "
+            f"bot类型={type(application.bot).__name__ if hasattr(application, 'bot') else 'N/A'}"
+        )
+
         # 检查权限（一次性完成所有检查）
         level = await self.permission_service.check_permission(
-            telegram_id, context.application
+            telegram_id, application
         )
 
         logger.info(f"权限中间件: 用户 {telegram_id} 权限级别={level}")
@@ -59,7 +75,7 @@ class PermissionMiddleware(BaseHandler):
                 elif update.callback_query:
                     # 如果是 callback query，先回答再发送消息
                     await update.callback_query.answer(text="🚫 没有权限", show_alert=True)
-                    await update.bot.send_message(
+                    await application.bot.send_message(
                         chat_id=telegram_id,
                         text=message,
                         parse_mode="Markdown"
@@ -68,29 +84,6 @@ class PermissionMiddleware(BaseHandler):
                 logger.error(f"发送权限拒绝消息失败: {e}")
 
             raise DispatcherHandlerStop  # 阻止继续处理
-
-        # 检查群组/频道权限（当 Bot 在群组/频道中被调用时）
-        if update.effective_chat:
-            chat_id = update.effective_chat.id
-            chat_type = update.effective_chat.type
-
-            if chat_type in ["group", "supergroup"]:
-                if not await self.permission_service.is_whitelisted_group(chat_id):
-                    logger.warning(f"权限中间件: 拒绝群组 {chat_id} 访问（群组不在白名单中）")
-                    if update.effective_message:
-                        await update.effective_message.reply_text(
-                            "🚫 此群组未在白名单中，请联系管理员。"
-                        )
-                    raise DispatcherHandlerStop
-
-            elif chat_type == "channel":
-                if not await self.permission_service.is_whitelisted_channel(chat_id):
-                    logger.warning(f"权限中间件: 拒绝频道 {chat_id} 访问（频道不在白名单中）")
-                    if update.effective_message:
-                        await update.effective_message.reply_text(
-                            "🚫 此频道未在白名单中，请联系管理员。"
-                        )
-                    raise DispatcherHandlerStop
 
         # 权限检查通过，继续由其他 handler 处理
         logger.info(f"权限中间件: 用户 {telegram_id} 权限检查通过")
