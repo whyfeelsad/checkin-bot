@@ -165,7 +165,7 @@ async def add_account_credentials(
                         text=(
                             f"🌐 正在添加账号：{site_config['name']}\n\n"
                             "🚨 格式不对，重新输入\n"
-                            "📝 格式: `用户名  密码`\n"
+                            "📝 格式: `用户名 密码`\n"
                             "💡 比如: `myuser passwd`\n\n"
                             "🔒 为保护您的隐私，密码在输入后将自动删除"
                         ),
@@ -175,10 +175,18 @@ async def add_account_credentials(
                         ]),
                     )
                 except Exception:
-                    pass  # 编辑失败，忽略
+                    logger.debug("编辑消息失败（可能已被删除或无权限）")
         return ADD_ACCOUNT_CREDENTIALS
 
     username, password = parts
+
+    # 基本输入验证
+    if not username or not password:
+        await context.bot.send_message(
+            chat_id=update.effective_message.chat_id,
+            text="🚨 用户名或密码不能为空"
+        )
+        return ADD_ACCOUNT_CREDENTIALS
 
     # 获取 chat_id 和消息 ID（在删除消息之前）
     chat_id = update.effective_message.chat_id

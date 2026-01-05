@@ -95,7 +95,8 @@ class SiteAuthService:
                     timeout=LOGIN_TIMEOUT,
                 )
 
-                logger.debug(f"登录响应状态: {response.status_code}, 内容: {response.text[:500]}")
+                # 安全起见，不记录响应内容（可能包含敏感信息）
+                logger.debug(f"登录响应状态: {response.status_code}, 内容长度: {len(response.text) if response.text else 0}")
 
                 # 5. 检查登录结果
                 if response.status_code == 200:
