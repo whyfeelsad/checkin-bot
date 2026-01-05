@@ -48,11 +48,13 @@ def get_admin_user_list_keyboard(users_with_accounts: list) -> InlineKeyboardMar
             )
         ])
 
-    # 批量签到和返回菜单按钮（同一行）
+    # 批量签到和一键推送按钮（同一行）
     buttons.append([
         InlineKeyboardButton("📋 批量签到", callback_data="admin_checkin_all"),
-        InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu"),
+        InlineKeyboardButton("📢 一键推送", callback_data="admin_push_all"),
     ])
+    # 返回菜单按钮（单独一行）
+    buttons.append([InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu")])
 
     return InlineKeyboardMarkup(buttons)
 
@@ -276,7 +278,107 @@ async def admin_checkin_all_callback(
             logger.warning(f"编辑消息失败: {e}")
 
 
+async def admin_push_all_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """管理员一键推送所有用户签到结果回调"""
+    if not update.effective_message or not update.callback_query:
+        return
+
+    await answer_callback_query(update)
+
+    user_id = update.effective_user.id
+
+    # 检查管理员权限
+    permission_service = PermissionService()
+    is_admin = await permission_service.is_admin(user_id)
+
+    if not is_admin:
+        await update.effective_message.edit_text(
+            "❌ 您没有权限访问此功能",
+            reply_markup=get_back_to_menu_keyboard(),
+        )
+        return
+
+    logger.info(f"管理员 {user_id} 触发一键推送")
+
+    # 获取所有账号
+    account_repo = AccountRepository()
+    user_repo = UserRepository()
+    all_accounts = await account_repo.get_all_active()
+
+    if not all_accounts:
+        await update.effective_message.edit_text("📝 系统中暂无账号")
+        return
+
+    from checkin_bot.services.notification import NotificationService
+
+    notification_service = NotificationService()
+
+    # 按用户分组
+    from collections import defaultdict
+    user_accounts = defaultdict(list)
+    for account in all_accounts:
+        user_accounts[account.user_id].append(account)
+
+    # 为每个用户发送推送
+    sent_count = 0
+    failed_count = 0
+
+    for target_user_id, account_list in user_accounts.items():
+        try:
+            user = await user_repo.get_by_id(target_user_id)
+            if not user:
+                logger.warning(f"用户不存在: ID={target_user_id}")
+                failed_count += 1
+                continue
+
+            account_ids = [acc.id for acc in account_list]
+            message = await notification_service.format_today_logs(
+                target_user_id, account_ids
+            )
+
+            if message:
+                await context.bot.send_message(
+                    chat_id=user.telegram_id,
+                    text=message,
+                    parse_mode="Markdown",
+                )
+                sent_count += 1
+                logger.info(f"已推送签到通知给用户 {target_user_id} (telegram_id={user.telegram_id})")
+            else:
+                logger.debug(f"用户 {target_user_id} 今日暂无签到记录")
+
+        except Exception as e:
+            logger.error(f"推送签到通知失败 (用户 {target_user_id}): {e}")
+            failed_count += 1
+
+    # 获取最新的用户列表键盘
+    users = await user_repo.get_all()
+    users_with_accounts = []
+    for user in users:
+        account_count = await account_repo.count_by_user(user.id)
+        if account_count > 0:
+            users_with_accounts.append((user, account_count))
+
+    keyboard = get_admin_user_list_keyboard(users_with_accounts)
+
+    # 构建推送结果消息
+    push_summary = f"📢 推送完成\n\n✔ 成功: {sent_count}\n✖ 失败: {failed_count}"
+
+    try:
+        await update.effective_message.edit_text(
+            push_summary,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        if "not modified" not in str(e).lower():
+            logger.warning(f"编辑消息失败: {e}")
+
+
 # Handler instances
 admin_handler = CallbackQueryHandler(admin_callback, pattern="^admin$")
 admin_view_user_handler = CallbackQueryHandler(admin_view_user_callback, pattern="^admin_user_")
 admin_checkin_all_handler = CallbackQueryHandler(admin_checkin_all_callback, pattern="^admin_checkin_all$")
+admin_push_all_handler = CallbackQueryHandler(admin_push_all_callback, pattern="^admin_push_all$")
