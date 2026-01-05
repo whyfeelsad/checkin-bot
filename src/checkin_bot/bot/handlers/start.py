@@ -44,9 +44,9 @@ async def start_handler(
     is_admin = await permission_service.is_admin(user_id)
 
     welcome_text = (
-        f"👋 欢迎使用自动签到机器人，{update.effective_user.first_name}！\n\n"
-        "📅 每日自动签到，积分不再错过\n"
-        "🔒 密码加密存储，安全可靠\n"
+        f"👋 欢迎使用签到机器人，{update.effective_user.first_name}！\n\n"
+        "📅 自动签到，鸡腿不再错过\n"
+        "🔒 密码加密，安心使用\n"
         "🎉 支持多站点、多账号管理"
     )
 

@@ -78,7 +78,7 @@ async def admin_callback(
     if not is_admin:
         logger.warning(f"用户 {user_id} 尝试在无权限情况下访问后台管理")
         await update.effective_message.edit_text(
-            "❌ 您没有权限访问此功能",
+            "🚨 没有权限哦",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -103,7 +103,7 @@ async def admin_callback(
     keyboard = get_admin_user_list_keyboard(users_with_accounts)
 
     # 生成统计消息
-    text = f"⚙️ 管理后台 • 👥 {len(users_with_accounts)} 用户 • 📦 {total_accounts} 账号"
+    text = f"⚙️ 控制中心 • 👥 {len(users_with_accounts)} 用户 • 📦 {total_accounts} 账号"
 
     await update.effective_message.edit_text(
         text,
@@ -129,7 +129,7 @@ async def admin_view_user_callback(
 
     if not is_admin:
         await update.effective_message.edit_text(
-            "❌ 您没有权限访问此功能",
+            "🚨 没有权限哦",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -137,7 +137,7 @@ async def admin_view_user_callback(
     # 解析目标用户 ID
     target_user_id = parse_callback_id(update.callback_query.data, "admin_user_")
     if target_user_id is None:
-        await update.effective_message.edit_text("❌ 无效的请求")
+        await update.effective_message.edit_text("💥 请求无效")
         return
 
     logger.info(f"管理员 {user_id} 查看用户 {target_user_id} 的账号")
@@ -192,7 +192,7 @@ async def admin_checkin_all_callback(
 
     if not is_admin:
         await update.effective_message.edit_text(
-            "❌ 您没有权限访问此功能",
+            "🚨 没有权限哦",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -204,7 +204,7 @@ async def admin_checkin_all_callback(
     all_accounts = await account_repo.get_all_active()
 
     if not all_accounts:
-        await update.effective_message.edit_text("📝 系统中暂无账号")
+        await update.effective_message.edit_text("📝 系统还没有账号")
         return
 
     from checkin_bot.services.checkin import CheckinService
@@ -245,17 +245,17 @@ async def admin_checkin_all_callback(
             success_count += 1
             delta = result.get("credits_delta", 0)
             total_delta += delta
-            results.append(f"✔ {site_name} ({account.site_username}): +{delta}")
+            results.append(f"🎉 {site_name} ({account.site_username}): +{delta}")
         else:
             failed_count += 1
-            results.append(f"✖ {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
+            results.append(f"💥 {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
 
     # 构建汇总消息
     summary_lines = [
-        "📋 批量签到完成\n",
-        f"✔ 成功: {success_count}",
-        f"✖ 失败: {failed_count}",
-        f"📈 总鸡腿: +{total_delta}\n",
+        "📋 批量签到战绩\n",
+        f"🎉 成功: {success_count}",
+        f"💥 失败: {failed_count}",
+        f"🔥 总收益: 🍗 +{total_delta}\n",
         "───────",
     ]
     summary_lines.extend(results)
@@ -301,7 +301,7 @@ async def admin_push_all_callback(
 
     if not is_admin:
         await update.effective_message.edit_text(
-            "❌ 您没有权限访问此功能",
+            "🚨 没有权限哦",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -314,7 +314,7 @@ async def admin_push_all_callback(
     all_accounts = await account_repo.get_all_active()
 
     if not all_accounts:
-        await update.effective_message.edit_text("📝 系统中暂无账号")
+        await update.effective_message.edit_text("📝 系统还没有账号")
         return
 
     from checkin_bot.services.notification import NotificationService
@@ -370,7 +370,7 @@ async def admin_push_all_callback(
     keyboard = get_admin_user_list_keyboard(users_with_accounts)
 
     # 构建推送结果消息
-    push_summary = f"📢 推送完成\n\n✔ 成功: {sent_count}\n✖ 失败: {failed_count}"
+    push_summary = f"📢 推送完成\n\n🎉 成功: {sent_count}\n💥 失败: {failed_count}"
 
     try:
         await update.effective_message.edit_text(

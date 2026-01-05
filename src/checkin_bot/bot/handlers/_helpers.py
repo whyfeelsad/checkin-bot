@@ -38,7 +38,7 @@ async def get_user_or_error(
     user = await user_repo.get_by_telegram_id(update.effective_user.id)
 
     if not user:
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         if return_none:
             return None
         # 对于 ConversationHandler，返回 ConversationHandler.END
@@ -52,7 +52,7 @@ async def show_account_list(
     update: Update,
     user_id: int,
     context: ContextTypes.DEFAULT_TYPE | None = None,
-    empty_message: str = "📝 您还没有添加任何账号",
+    empty_message: str = "📝 还没有账号哦",
     update_status: dict[int, str] | None = None,
 ) -> bool:
     """

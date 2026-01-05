@@ -39,7 +39,7 @@ async def checkin_callback(
 
     if not user:
         await update.effective_message.edit_text(
-            "❌ 用户不存在",
+            "💥 找不到用户",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -79,7 +79,7 @@ async def checkin_status_callback(
     if account_id is None:
         logger.warning(f"无效的签到回调数据: {update.callback_query.data}")
         await update.effective_message.edit_text(
-            "❌ 无效的请求",
+            "💥 请求无效",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -97,14 +97,14 @@ async def checkin_status_callback(
         # 检查是否为重复签到
         if "今日已签到" in message or "已完成签到" in message or "已经签到" in message or "重复" in message:
             text = (
-                f"🔔 今日已签到，请勿重复操作！\n"
-                f"📈 鸡腿变化: +{delta}，当前鸡腿：{after}"
+                f"🔔 今日已签过啦\n"
+                f"🔥 鸡腿 +{delta}，当前 {after}"
             )
         else:
             text = (
-                f"🎉 签到成功！\n"
-                f"📈 鸡腿变化: +{delta}\n"
-                f"💰 当前鸡腿: {after}"
+                f"🎉 签到大成功！\n"
+                f"🔥 鸡腿 +{delta}\n"
+                f"💰 当前 {after}"
             )
 
         await update.effective_message.edit_text(
@@ -114,7 +114,7 @@ async def checkin_status_callback(
     else:
         logger.warning(f"手动签到失败: 账号 {account_id} - {result.get('message', '未知错误')}")
         await update.effective_message.edit_text(
-            f"❌ 签到失败\n"
+            f"💥 签到翻车了\n"
             f"{result.get('message', '未知错误')}",
             reply_markup=get_back_to_checkin_list_keyboard(),
         )

@@ -28,7 +28,7 @@ def get_main_menu_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     ])
     # 第二行：立即签到、签到日志
     buttons.append([
-        InlineKeyboardButton("🚀 立即签到", callback_data="checkin"),
+        InlineKeyboardButton("🏃 立即签到", callback_data="checkin"),
         InlineKeyboardButton("📖 签到日志", callback_data="logs"),
     ])
     # 第三行：数据统计、查看帮助

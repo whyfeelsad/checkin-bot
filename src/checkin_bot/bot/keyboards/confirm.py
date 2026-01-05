@@ -21,8 +21,8 @@ def get_confirm_keyboard(
     """
     buttons = [
         [
-            InlineKeyboardButton(f"✔ 确认{action}", callback_data=confirm_data),
-            InlineKeyboardButton("✖ 取消", callback_data=cancel_data),
+            InlineKeyboardButton(f"🎉 确认{action}", callback_data=confirm_data),
+            InlineKeyboardButton("🚫 取消", callback_data=cancel_data),
         ],
     ]
 

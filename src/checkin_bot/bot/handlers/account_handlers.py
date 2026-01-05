@@ -86,7 +86,7 @@ async def add_account_callback(
     keyboard = get_site_selection_keyboard()
 
     await update.effective_message.edit_text(
-        "🌐 请选择要添加账号的站点：",
+        "🌐 选择要添加的站点：",
         reply_markup=keyboard,
     )
 
@@ -122,9 +122,9 @@ async def add_account_site(
 
     await update.effective_message.edit_text(
         f"🌐 正在添加账号：{site_config['name']}\n\n"
-        "🔐 请输入您的账号和密码\n"
-        "📝 格式：`用户名  密码`\n"
-        "💡 示例：`myuser passwd`\n\n"
+        "🔐 输入账号密码\n"
+        "📝 格式: `用户名  密码`\n"
+        "💡 比如: `myuser passwd`\n\n"
         "🔒 为保护您的隐私，密码在输入后将自动删除",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([
@@ -164,9 +164,9 @@ async def add_account_credentials(
                         message_id=prompt_message_id,
                         text=(
                             f"🌐 正在添加账号：{site_config['name']}\n\n"
-                            "⚠️ 格式错误，请重新输入\n"
-                            "📝 格式：`用户名  密码`\n"
-                            "💡 示例：`myuser passwd`\n\n"
+                            "🚨 格式不对，重新输入\n"
+                            "📝 格式: `用户名  密码`\n"
+                            "💡 比如: `myuser passwd`\n\n"
                             "🔒 为保护您的隐私，密码在输入后将自动删除"
                         ),
                         parse_mode="Markdown",
@@ -194,7 +194,7 @@ async def add_account_credentials(
     session = await session_repo.get_by_telegram_id(update.effective_user.id)
 
     if not session:
-        await context.bot.send_message(chat_id, "❌ 会话已过期，请重新开始")
+        await context.bot.send_message(chat_id, "🚨 会话过期，重新开始吧")
         return ConversationHandler.END
 
     site_str = session.data.get("site")
@@ -238,8 +238,8 @@ async def add_account_credentials(
             # 显示确认对话框
             keyboard = InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("✔️ 确定", callback_data=f"confirm_replace_yes"),
-                    InlineKeyboardButton("✖️ 取消", callback_data=f"confirm_replace_no"),
+                    InlineKeyboardButton("🎉 确定", callback_data=f"confirm_replace_yes"),
+                    InlineKeyboardButton("🚫 取消", callback_data=f"confirm_replace_no"),
                 ]
             ])
 
@@ -247,10 +247,10 @@ async def add_account_credentials(
                 chat_id=chat_id,
                 message_id=prompt_message_id,
                 text=(
-                    f"⚠️ 检测到已添加过的账号\n\n"
-                    f"📍 站点：{site_config['name']}\n"
-                    f"👤 用户名：{username}\n\n"
-                    f"是否替换此账号？"
+                    f"🚨 发现已有账号\n\n"
+                    f"📍 站点: {site_config['name']}\n"
+                    f"👤 用户名: {username}\n\n"
+                    f"要替换吗？"
                 ),
                 reply_markup=keyboard,
             )
@@ -319,10 +319,10 @@ async def add_account_credentials(
             chat_id=chat_id,
             message_id=progress_msg_id,
             text=(
-                "账号添加成功！\n\n"
-                "📋 请选择获取鸡腿的方案：\n"
-                "• 📌 鸡腿 x 5  每日固定获得 5 鸡腿\n"
-                "• 🎲 试试手气 每日随机获得 1-15 鸡腿"
+                "🎉 账号添加成功！\n\n"
+                "📋 选择鸡腿获取方式：\n"
+                "• 🛡️ 鸡腿 x 5  每天 5 鸡腿\n"
+                "• 🎲 试试手气 随机 1-15 鸡腿"
             ),
             reply_markup=keyboard,
         )
@@ -351,12 +351,12 @@ async def add_account_credentials(
                 chat_id=chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "😔 登录失败了\n\n"
-                    "可能的原因：\n"
-                    "• 账号或密码错误\n"
-                    "• 网络连接不稳定\n"
-                    "• 验证码解决超时\n\n"
-                    "💡 您可以重试，系统会自动更换新的浏览器指纹"
+                    "😵 登录翻车了\n\n"
+                    "🔍 可能原因:\n"
+                    "• 账号密码不对\n"
+                    "• 网络在开小差\n"
+                    "• 验证码超时了\n\n"
+                    "💡 要不再试一次？"
                 ),
                 reply_markup=get_retry_keyboard(new_retry_count, MAX_RETRIES),
             )
@@ -368,13 +368,13 @@ async def add_account_credentials(
                 chat_id=chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "😔 登录失败，已达到最大重试次数\n\n"
-                    "可能的原因：\n"
-                    "• 账号或密码错误\n"
-                    "• 网络连接不稳定\n"
-                    "• 验证码解决超时\n\n"
-                    "💡 建议：\n"
-                    "• 检查账号密码是否正确\n"
+                    "😵 已达到最大重试次数\n\n"
+                    "🔍 可能原因:\n"
+                    "• 账号密码不对\n"
+                    "• 网络在开小差\n"
+                    "• 验证码超时了\n\n"
+                    "💡 建议:\n"
+                    "• 检查账号密码\n"
                     "• 稍后再试"
                 ),
                 reply_markup=get_site_selection_keyboard(),
@@ -419,17 +419,17 @@ async def add_account_mode(
     # 根据模式显示不同的文案
     if mode == CheckinMode.FIXED:
         message = (
-            "✨ 设置成功！\n\n"
-            "📌 模式：固定鸡腿\n"
-            "🎁 每日固定获得 5 鸡腿\n\n"
-            f"💰 当前鸡腿数：{account_credits}"
+            "🎉 设置完成！\n\n"
+            "🛡️ 模式: 稳稳拿鸡腿\n"
+            "🎁 每天 5 鸡腿\n\n"
+            f"💰 当前鸡腿: {account_credits}"
         )
     else:
         message = (
-            "✨ 设置成功！\n\n"
-            "🎲 模式：试试手气\n"
-            "🎁 每日随机获得 1-15 鸡腿\n\n"
-            f"💰 当前鸡腿数：{account_credits}"
+            "🎉 设置完成！\n\n"
+            "🎲 模式: 试试手气\n"
+            "🎁 随机 1-15 鸡腿\n\n"
+            f"💰 当前鸡腿: {account_credits}"
         )
 
     await update.effective_message.edit_text(
@@ -457,7 +457,7 @@ async def confirm_replace_callback(
     # 获取保存的账号信息
     pending = context.user_data.get("pending_account") if context.user_data else None
     if not pending:
-        await update.effective_message.edit_text("❌ 会话已过期，请重新添加账号")
+        await update.effective_message.edit_text("🚨 会话过期，重新开始吧")
         return ConversationHandler.END
 
     # 解析用户选择
@@ -525,10 +525,10 @@ async def confirm_replace_callback(
             chat_id=update.effective_message.chat_id,
             message_id=progress_msg_id,
             text=(
-                "账号替换成功！\n\n"
-                "📋 请选择获取鸡腿的方案：\n"
-                "• 📌 鸡腿 x 5  每日固定获得 5 鸡腿\n"
-                "• 🎲 试试手气 每日随机获得 1-15 鸡腿"
+                "🎉 账号替换成功！\n\n"
+                "📋 选择鸡腿获取方式：\n"
+                "• 🛡️ 鸡腿 x 5  每天 5 鸡腿\n"
+                "• 🎲 试试手气 随机 1-15 鸡腿"
             ),
             reply_markup=keyboard,
         )
@@ -551,12 +551,12 @@ async def confirm_replace_callback(
                 chat_id=update.effective_message.chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "😔 登录失败了\n\n"
-                    "可能的原因：\n"
-                    "• 账号或密码错误\n"
-                    "• 网络连接不稳定\n"
-                    "• 验证码解决超时\n\n"
-                    "💡 您可以重试，系统会自动更换新的浏览器指纹"
+                    "😵 登录翻车了\n\n"
+                    "🔍 可能原因:\n"
+                    "• 账号密码不对\n"
+                    "• 网络在开小差\n"
+                    "• 验证码超时了\n\n"
+                    "💡 要不再试一次？"
                 ),
                 reply_markup=get_retry_keyboard(new_retry_count, MAX_RETRIES),
             )
@@ -572,13 +572,13 @@ async def confirm_replace_callback(
                 chat_id=update.effective_message.chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "😔 登录失败，已达到最大重试次数\n\n"
-                    "可能的原因：\n"
-                    "• 账号或密码错误\n"
-                    "• 网络连接不稳定\n"
-                    "• 验证码解决超时\n\n"
-                    "💡 建议：\n"
-                    "• 检查账号密码是否正确\n"
+                    "😵 已达到最大重试次数\n\n"
+                    "🔍 可能原因:\n"
+                    "• 账号密码不对\n"
+                    "• 网络在开小差\n"
+                    "• 验证码超时了\n\n"
+                    "💡 建议:\n"
+                    "• 检查账号密码\n"
                     "• 稍后再试"
                 ),
                 reply_markup=get_site_selection_keyboard(),
@@ -606,7 +606,7 @@ async def checkin_now_callback(
 
     if not accounts:
         await update.effective_message.edit_text(
-            "📝 您还没有添加任何账号",
+            "📝 还没有账号哦",
             reply_markup=get_account_added_keyboard(),
         )
         return
@@ -631,8 +631,8 @@ async def checkin_now_callback(
             try:
                 await update.effective_message.edit_text(
                     f"🎉 今日已签到！\n"
-                    f"📈 鸡腿变化: +{delta}\n"
-                    f"💰 当前鸡腿: {after}",
+                    f"🔥 鸡腿 +{delta}\n"
+                    f"💰 当前 {after}",
                     reply_markup=get_account_added_keyboard(),
                 )
             except Exception as e:
@@ -643,9 +643,9 @@ async def checkin_now_callback(
             # 正常签到成功，编辑消息
             try:
                 await update.effective_message.edit_text(
-                    f"🎉 签到成功！\n"
-                    f"📈 鸡腿变化: +{delta}\n"
-                    f"💰 当前鸡腿: {after}",
+                    f"🎉 签到大成功！\n"
+                    f"🔥 鸡腿 +{delta}\n"
+                    f"💰 当前 {after}",
                     reply_markup=get_account_added_keyboard(),
                 )
             except Exception as e:
@@ -655,7 +655,7 @@ async def checkin_now_callback(
     else:
         logger.warning(f"立即签到失败: 账号 {first_account.id} - {result.get('message', '未知错误')}")
         await update.effective_message.edit_text(
-            f"❌ 签到失败\n"
+            f"💥 签到翻车了\n"
             f"{result.get('message', '未知错误')}",
             reply_markup=get_account_added_keyboard(),
         )
@@ -681,7 +681,7 @@ async def checkin_all_callback(
 
     if not accounts:
         await update.effective_message.edit_text(
-            "📝 您还没有添加任何账号",
+            "📝 还没有账号哦",
             reply_markup=get_account_added_keyboard(),
         )
         return
@@ -693,7 +693,7 @@ async def checkin_all_callback(
 
     # 记录当前页面，用于签到完成后返回
     current_text = update.effective_message.text or ""
-    from_checkin_page = "请选择要签到的账号" in current_text
+    from_checkin_page = "选择要签到的账号" in current_text
 
     # 汇总结果
     success_count = 0
@@ -728,17 +728,17 @@ async def checkin_all_callback(
             success_count += 1
             delta = result.get("credits_delta", 0)
             total_delta += delta
-            results.append(f"✔ {site_name} ({account.site_username}): +{delta}")
+            results.append(f"🎉 {site_name} ({account.site_username}): +{delta}")
         else:
             failed_count += 1
-            results.append(f"✖ {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
+            results.append(f"💥 {site_name} ({account.site_username}): {result.get('message', '未知错误')}")
 
     # 构建汇总消息
     summary_lines = [
-        "📋 批量签到完成\n",
-        f"✔ 成功: {success_count}",
-        f"✖ 失败: {failed_count}",
-        f"📈 总鸡腿: +{total_delta}\n",
+        "📋 批量签到战绩\n",
+        f"🎉 成功: {success_count}",
+        f"💥 失败: {failed_count}",
+        f"🔥 总收益: 🍗 +{total_delta}\n",
         "───────",
     ]
     summary_lines.extend(results)
@@ -841,10 +841,10 @@ async def retry_login_callback(
                 chat_id=chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "账号替换成功！\n\n"
-                    "📋 请选择获取鸡腿的方案：\n"
-                    "• 📌 鸡腿 x 5  每日固定获得 5 鸡腿\n"
-                    "• 🎲 试试手气 每日随机获得 1-15 鸡腿"
+                    "🎉 账号替换成功！\n\n"
+                    "📋 选择鸡腿获取方式：\n"
+                    "• 🛡️ 鸡腿 x 5  每天 5 鸡腿\n"
+                    "• 🎲 试试手气 随机 1-15 鸡腿"
                 ),
                 reply_markup=keyboard,
             )
@@ -867,12 +867,12 @@ async def retry_login_callback(
                     chat_id=chat_id,
                     message_id=progress_msg_id,
                     text=(
-                        "😔 登录失败了\n\n"
-                        "可能的原因：\n"
-                        "• 账号或密码错误\n"
-                        "• 网络连接不稳定\n"
-                        "• 验证码解决超时\n\n"
-                        "💡 您可以重试，系统会自动更换新的浏览器指纹"
+                        "😵 登录翻车了\n\n"
+                        "🔍 可能原因:\n"
+                        "• 账号密码不对\n"
+                        "• 网络在开小差\n"
+                        "• 验证码超时了\n\n"
+                        "💡 要不再试一次？"
                     ),
                     reply_markup=get_retry_keyboard(new_retry_count, MAX_RETRIES),
                 )
@@ -887,13 +887,13 @@ async def retry_login_callback(
                     chat_id=chat_id,
                     message_id=progress_msg_id,
                     text=(
-                        "😔 登录失败，已达到最大重试次数\n\n"
-                        "可能的原因：\n"
-                        "• 账号或密码错误\n"
-                        "• 网络连接不稳定\n"
-                        "• 验证码解决超时\n\n"
-                        "💡 建议：\n"
-                        "• 检查账号密码是否正确\n"
+                        "😵 已达到最大重试次数\n\n"
+                        "🔍 可能原因:\n"
+                        "• 账号密码不对\n"
+                        "• 网络在开小差\n"
+                        "• 验证码超时了\n\n"
+                        "💡 建议:\n"
+                        "• 检查账号密码\n"
                         "• 稍后再试"
                     ),
                     reply_markup=get_site_selection_keyboard(),
@@ -980,10 +980,10 @@ async def retry_login_callback(
             chat_id=chat_id,
             message_id=progress_msg_id,
             text=(
-                "账号添加成功！\n\n"
-                "📋 请选择获取鸡腿的方案：\n"
-                "• 📌 鸡腿 x 5  每日固定获得 5 鸡腿\n"
-                "• 🎲 试试手气 每日随机获得 1-15 鸡腿"
+                "🎉 账号添加成功！\n\n"
+                "📋 选择鸡腿获取方式：\n"
+                "• 🛡️ 鸡腿 x 5  每天 5 鸡腿\n"
+                "• 🎲 试试手气 随机 1-15 鸡腿"
             ),
             reply_markup=keyboard,
         )
@@ -1009,12 +1009,12 @@ async def retry_login_callback(
                 chat_id=chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "😔 登录失败了\n\n"
-                    "可能的原因：\n"
-                    "• 账号或密码错误\n"
-                    "• 网络连接不稳定\n"
-                    "• 验证码解决超时\n\n"
-                    "💡 您可以重试，系统会自动更换新的浏览器指纹"
+                    "😵 登录翻车了\n\n"
+                    "🔍 可能原因:\n"
+                    "• 账号密码不对\n"
+                    "• 网络在开小差\n"
+                    "• 验证码超时了\n\n"
+                    "💡 要不再试一次？"
                 ),
                 reply_markup=get_retry_keyboard(new_retry_count, MAX_RETRIES),
             )
@@ -1026,13 +1026,13 @@ async def retry_login_callback(
                 chat_id=chat_id,
                 message_id=progress_msg_id,
                 text=(
-                    "😔 登录失败，已达到最大重试次数\n\n"
-                    "可能的原因：\n"
-                    "• 账号或密码错误\n"
-                    "• 网络连接不稳定\n"
-                    "• 验证码解决超时\n\n"
-                    "💡 建议：\n"
-                    "• 检查账号密码是否正确\n"
+                    "😵 已达到最大重试次数\n\n"
+                    "🔍 可能原因:\n"
+                    "• 账号密码不对\n"
+                    "• 网络在开小差\n"
+                    "• 验证码超时了\n\n"
+                    "💡 建议:\n"
+                    "• 检查账号密码\n"
                     "• 稍后再试"
                 ),
                 reply_markup=get_site_selection_keyboard(),
@@ -1109,7 +1109,7 @@ async def delete_account_callback(
             # 回退到简化版本
             try:
                 await update.effective_message.edit_text(
-                    f"⚠️ 确认移除账号\n\n账号：{account.site_username}\n站点：{site_name}\n\n此操作不可撤销！",
+                    f"🚨 确认移除账号\n\n账号: {account.site_username}\n站点: {site_name}\n\n移除后无法恢复！",
                     reply_markup=keyboard,
                 )
             except TelegramError as e2:
@@ -1117,7 +1117,7 @@ async def delete_account_callback(
         except TelegramError as e:
             logger.error(f"显示删除确认对话框失败 (未知错误): {e}")
     else:
-        await update.effective_message.edit_text("❌ 账号不存在")
+        await update.effective_message.edit_text("💥 账号不存在")
         return ConversationHandler.END
 
     return DELETE_CONFIRM
@@ -1161,7 +1161,7 @@ async def delete_account_confirm(
         # 删除成功后直接返回账号列表
         await show_account_list(update, user.id, context)
     else:
-        await update.effective_message.edit_text(f"❌ {result['message']}")
+        await update.effective_message.edit_text(f"💥 {result['message']}")
 
     return ConversationHandler.END
 
@@ -1197,7 +1197,7 @@ async def update_cookie_callback(
     # 解析账号 ID
     account_id = parse_callback_id(update.callback_query.data, "update_cookie_")
     if account_id is None:
-        await update.effective_message.edit_text("❌ 无效的请求")
+        await update.effective_message.edit_text("💥 请求无效")
         return
 
     # 获取用户
@@ -1205,7 +1205,7 @@ async def update_cookie_callback(
     user = await user_repo.get_by_telegram_id(update.effective_user.id)
 
     if not user:
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 初始化更新状态字典
@@ -1257,7 +1257,7 @@ async def toggle_mode_callback(
     # 解析账号 ID
     account_id = parse_callback_id(update.callback_query.data, "toggle_mode_")
     if account_id is None:
-        await update.effective_message.edit_text("❌ 无效的请求")
+        await update.effective_message.edit_text("💥 请求无效")
         return
 
     # 获取用户
@@ -1265,7 +1265,7 @@ async def toggle_mode_callback(
     user = await user_repo.get_by_telegram_id(update.effective_user.id)
 
     if not user:
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 切换模式（静默执行，不显示中间消息）
@@ -1290,7 +1290,7 @@ async def set_checkin_time_callback(
     # 解析账号 ID 和时间
     result = parse_time_callback(update.callback_query.data, "set_checkin_")
     if result is None:
-        await update.effective_message.edit_text("❌ 无效的请求")
+        await update.effective_message.edit_text("💥 请求无效")
         return
 
     account_id, action = result
@@ -1299,7 +1299,7 @@ async def set_checkin_time_callback(
     if action == "time":
         keyboard = get_time_picker_keyboard(account_id, is_checkin=True)
         await update.effective_message.edit_text(
-            "⏰ 请选择签到时间",
+            "⏰ 选择签到时间",
             reply_markup=keyboard,
         )
         return
@@ -1312,7 +1312,7 @@ async def set_checkin_time_callback(
     user = await user_repo.get_by_telegram_id(update.effective_user.id)
 
     if not user:
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 设置签到时间（静默执行，不显示中间消息）
@@ -1341,7 +1341,7 @@ async def set_push_time_callback(
     # 解析账号 ID 和时间
     result = parse_time_callback(update.callback_query.data, "set_push_")
     if result is None:
-        await update.effective_message.edit_text("❌ 无效的请求")
+        await update.effective_message.edit_text("💥 请求无效")
         return
 
     account_id, action = result
@@ -1350,7 +1350,7 @@ async def set_push_time_callback(
     if action == "time":
         keyboard = get_time_picker_keyboard(account_id, is_checkin=False)
         await update.effective_message.edit_text(
-            "🔔 请选择推送时间",
+            "🔔 选择推送时间",
             reply_markup=keyboard,
         )
         return
@@ -1363,7 +1363,7 @@ async def set_push_time_callback(
     user = await user_repo.get_by_telegram_id(update.effective_user.id)
 
     if not user:
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 设置推送时间（静默执行，不显示中间消息）

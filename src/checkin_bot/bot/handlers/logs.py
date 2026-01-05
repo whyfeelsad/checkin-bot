@@ -35,7 +35,7 @@ async def logs_callback(
 
     if not user:
         logger.warning(f"用户不存在: telegram_id={user_id}")
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 获取账号列表
@@ -45,7 +45,7 @@ async def logs_callback(
     if not accounts:
         logger.debug(f"用户 {user_id} 没有账号")
         await update.effective_message.edit_text(
-            "📝 您还没有添加任何账号",
+            "📝 还没有账号哦",
             reply_markup=get_back_to_menu_keyboard(),
         )
         return
@@ -56,10 +56,10 @@ async def logs_callback(
     logs = await log_repo.get_by_user(account_ids, limit=50)
 
     # 构建日志消息
-    lines = ["📋 签到日志\n"]
+    lines = ["📋 签到记录\n"]
 
     if not logs:
-        lines.append("暂无签到记录")
+        lines.append("还没有签到记录")
     else:
         # 统计数据
         success_logs = sum(1 for log in logs if log.status == CheckinStatus.SUCCESS)
@@ -67,8 +67,8 @@ async def logs_callback(
         total_credits = sum(log.credits_delta for log in logs if log.status == CheckinStatus.SUCCESS)
 
         # 统计摘要（简化）
-        lines.append(f"✔ {success_logs} 成功 | ✖ {failed_logs} 失败")
-        lines.append(f"今日收益 🍗  x {total_credits}\n")
+        lines.append(f"🎉 {success_logs} 成功 | 💥 {failed_logs} 失败")
+        lines.append(f"今日收益 🍗 {total_credits}\n")
 
         # 按账号分组
         account_logs = {}
@@ -97,11 +97,11 @@ async def logs_callback(
             for log in account_logs_list:
                 # 状态图标
                 if log.status == CheckinStatus.SUCCESS:
-                    status_icon = "✔"
+                    status_icon = "🎉"
                 elif log.status == CheckinStatus.FAILED:
-                    status_icon = "✖"
+                    status_icon = "💥"
                 else:
-                    status_icon = "⚠"
+                    status_icon = "🚨"
 
                 # 时间格式化
                 time_str = format_datetime(log.executed_at, "%m-%d %H:%M")
@@ -149,7 +149,7 @@ async def view_logs_callback(
 
     if not user:
         logger.warning(f"用户不存在: telegram_id={user_id}")
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 获取账号并验证权限
@@ -159,7 +159,7 @@ async def view_logs_callback(
 
     if not account:
         logger.warning(f"账号不存在或无权访问: account_id={account_id}")
-        await update.effective_message.edit_text("❌ 账号不存在")
+        await update.effective_message.edit_text("💥 账号不存在")
         return
 
     # 获取该账号的日志
@@ -169,7 +169,7 @@ async def view_logs_callback(
     # 构建日志消息
     site_config = SiteConfig.get(account.site)
     lines = [
-        f"📋 签到日志",
+        f"📋 签到记录",
         f"",
         f"🔖 {site_config['name']} • {account.site_username}",
     ]
@@ -179,7 +179,7 @@ async def view_logs_callback(
             f"",
             f"🍗 {account.credits} | 🔢 {account.checkin_count} 次",
             f"",
-            "暂无签到记录",
+            "还没有签到记录",
         ])
     else:
         # 统计数据
@@ -210,21 +210,21 @@ async def view_logs_callback(
             f"",
             f"🍗 {account.credits} | 🔢 {account.checkin_count} 次",
             f"",
-            f"✔ {success_logs} 成功 | ✖ {failed_logs} 失败",
-            f"📈 {success_rate:.0f}% | 🍗  x {total_credits}",
+            f"🎉 {success_logs} 成功 | 💥 {failed_logs} 失败",
+            f"📈 {success_rate:.0f}% | 🍗 {total_credits}",
             f"📡 {trend}",
             f"",
-            f"最近签到",
+            f"📜 最近记录",
         ])
 
         for log in logs:
             # 状态图标
             if log.status == CheckinStatus.SUCCESS:
-                status_icon = "✔"
+                status_icon = "🎉"
             elif log.status == CheckinStatus.FAILED:
-                status_icon = "✖"
+                status_icon = "💥"
             else:
-                status_icon = "⚠"
+                status_icon = "🚨"
 
             # 时间格式化
             time_str = format_datetime(log.executed_at, "%m-%d %H:%M")

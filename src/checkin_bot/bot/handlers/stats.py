@@ -35,7 +35,7 @@ async def stats_callback(
 
     if not user:
         logger.warning(f"用户不存在: telegram_id={user_id}")
-        await update.effective_message.edit_text("❌ 用户不存在")
+        await update.effective_message.edit_text("💥 找不到用户")
         return
 
     # 获取账号列表
@@ -45,7 +45,7 @@ async def stats_callback(
     if not accounts:
         logger.debug(f"用户 {user_id} 没有账号")
         await update.effective_message.edit_text(
-            "📝 您还没有添加任何账号",
+            "📝 还没有账号哦",
             reply_markup=get_empty_account_keyboard(),
         )
         return
@@ -75,11 +75,11 @@ async def stats_callback(
 
     # 生成统计消息
     lines = [
-        "📊 数据统计",
+        "📊 数据面板",
         "",
-        f"📝 总账号数: {total_accounts}",
-        f"✅ 总签到次数: {total_checkins}",
-        f"💰 总鸡腿数: {total_credits}",
+        f"📝 账号: {total_accounts}",
+        f"🔥 签到: {total_checkins} 次",
+        f"💰 鸡腿: 🍗 {total_credits}",
         "",
         "🌐 站点分布:",
     ]

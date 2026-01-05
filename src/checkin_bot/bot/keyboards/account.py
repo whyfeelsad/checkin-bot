@@ -47,7 +47,7 @@ def get_mode_selection_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                "📌 鸡腿 x 5",
+                "🛡️ 鸡腿 x 5",
                 callback_data=f"mode_{CheckinMode.FIXED.value}",
             ),
             InlineKeyboardButton(
@@ -87,16 +87,16 @@ def get_account_list_keyboard(accounts: list, update_status: dict[int, str] | No
 
         # 第二行：操作按钮
         # 模式切换按钮
-        mode_button_text = "📌 固定" if account.checkin_mode == CheckinMode.FIXED else "🎲 随机"
+        mode_button_text = "🛡️ 固定" if account.checkin_mode == CheckinMode.FIXED else "🎲 随机"
         # 更新按钮状态
         update_button_text = "🍪 更新"
         if update_status and account.id in update_status:
             if update_status[account.id] == "updating":
                 update_button_text = "⏳ 更新中"
             elif update_status[account.id] == "completed":
-                update_button_text = "✔️ 完成"
+                update_button_text = "🎉 完成"
             elif update_status[account.id] == "failed":
-                update_button_text = "✖️ 失败"
+                update_button_text = "💥 失败"
 
         row_2 = [
             InlineKeyboardButton(
@@ -141,11 +141,11 @@ def get_confirm_delete_keyboard(account_id: int, username: str | None = None, si
     buttons = [
         [
             InlineKeyboardButton(
-                "✔️ 确定",
+                "🎉 确定",
                 callback_data=f"confirm_delete_{account_id}",
             ),
             InlineKeyboardButton(
-                "✖️ 取消",
+                "🚫 取消",
                 callback_data="back_to_my_accounts",
             ),
         ],
@@ -165,12 +165,12 @@ def get_delete_confirm_message(username: str, site_name: str) -> str:
     Returns:
         删除确认消息
     """
-    return f"""⚠️ 确认移除账号
+    return f"""🚨 确认移除账号
 
 👤 账号：{username}
 🌐 站点：{site_name}
 
-‼️ 此操作不可撤销！"""
+⚡ 移除后无法恢复！"""
 
 
 def get_time_picker_keyboard(account_id: int, is_checkin: bool = True) -> InlineKeyboardMarkup:
@@ -244,7 +244,7 @@ def get_account_added_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                "🚀 立即签到",
+                "🏃 立即签到",
                 callback_data="checkin_now",
             ),
             InlineKeyboardButton(
