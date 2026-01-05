@@ -29,7 +29,10 @@ class DeepFloodAdapter(SiteAdapter):
         """执行签到"""
         logger.debug(f"开始 DeepFlood 签到: 站点 deepflood 用户 {account.site_username}")
 
-        session = AsyncSession(impersonate=self.settings.impersonate_browser)
+        # 获取代理配置
+        proxy_kwargs = self.settings.curl_proxy or {}
+
+        session = AsyncSession(impersonate=self.settings.impersonate_browser, **proxy_kwargs)
 
         try:
             # 1. 获取当前积分（签到前）
@@ -148,7 +151,10 @@ class DeepFloodAdapter(SiteAdapter):
 
     async def get_credits(self, account) -> int | None:
         """获取积分"""
-        session = AsyncSession(impersonate=self.settings.impersonate_browser)
+        # 获取代理配置
+        proxy_kwargs = self.settings.curl_proxy or {}
+
+        session = AsyncSession(impersonate=self.settings.impersonate_browser, **proxy_kwargs)
 
         try:
             return await self._fetch_credits(account.cookie, session)

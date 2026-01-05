@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     default_checkin_hour: int = Field(default=4, description="默认签到小时")
     default_push_hour: int = Field(default=9, description="默认推送小时")
 
+    # ==================== SOCKS5 代理配置 ====================
+    socks5_proxy: str = Field(default="", alias="SOCKS5_PROXY", description="SOCKS5 代理地址")
+    telegram_use_proxy: bool = Field(default=False, alias="TELEGRAM_USE_PROXY", description="Telegram 是否使用代理")
+
     # ==================== 日志配置 ====================
     log_level_str: str = Field(default="INFO", alias="LOG_LEVEL", description="日志级别: DEBUG, INFO, WARNING, ERROR")
 
@@ -97,6 +101,30 @@ class Settings(BaseSettings):
             or self.whitelist_group_ids
             or self.whitelist_channel_ids
         )
+
+    @property
+    def curl_proxy(self) -> dict | None:
+        """
+        获取用于 curl_cffi 的代理配置
+
+        Returns:
+            代理配置字典，未配置时返回 None
+        """
+        if not self.socks5_proxy:
+            return None
+        return {"proxies": {"http": self.socks5_proxy, "https": self.socks5_proxy}}
+
+    @property
+    def telegram_proxy_url(self) -> str | None:
+        """
+        获取用于 python-telegram-bot 的代理 URL
+
+        Returns:
+            代理 URL 字符串，未配置或不使用时返回 None
+        """
+        if not self.telegram_use_proxy or not self.socks5_proxy:
+            return None
+        return self.socks5_proxy
 
 
 # 全局配置实例

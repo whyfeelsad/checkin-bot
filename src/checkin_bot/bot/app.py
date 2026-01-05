@@ -34,8 +34,12 @@ def create_app() -> Application:
     """创建 Bot 应用实例"""
     settings = get_settings()
 
-    # 创建 Application
-    app = Application.builder().token(settings.bot_token).build()
+    # 创建 Application（根据配置决定是否使用代理）
+    builder = Application.builder().token(settings.bot_token)
+    if settings.telegram_proxy_url:
+        logger.info(f"Telegram 使用代理: {settings.telegram_proxy_url}")
+        builder = builder.proxy_url(settings.telegram_proxy_url)
+    app = builder.build()
 
     # 添加权限中间件
     app.add_handler(PermissionMiddleware(), group=-1)

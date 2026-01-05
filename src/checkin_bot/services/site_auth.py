@@ -49,8 +49,12 @@ class SiteAuthService:
         fingerprint = impersonate or self.settings.impersonate_browser
         logger.debug(f"使用浏览器指纹: {fingerprint}")
 
+        # 获取代理配置
+        proxy_kwargs = self.settings.curl_proxy or {}
+        logger.debug(f"代理配置: {proxy_kwargs if proxy_kwargs else '未配置'}")
+
         # 使用 async with 确保会话正确关闭
-        async with AsyncSession(impersonate=fingerprint) as session:
+        async with AsyncSession(impersonate=fingerprint, **proxy_kwargs) as session:
             try:
                 logger.debug(f"开始登录 {site.value}: {username}")
 
@@ -175,6 +179,9 @@ class SiteAuthService:
         Returns:
             是否有效
         """
-        async with AsyncSession(impersonate=self.settings.impersonate_browser) as session:
+        # 获取代理配置
+        proxy_kwargs = self.settings.curl_proxy or {}
+
+        async with AsyncSession(impersonate=self.settings.impersonate_browser, **proxy_kwargs) as session:
             result = await self._validate_cookie(site, cookie, session)
         return result
