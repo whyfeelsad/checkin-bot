@@ -20,7 +20,13 @@ from checkin_bot.bot.handlers.account_handlers import (
 from checkin_bot.bot.handlers.checkin import checkin_handler, checkin_status_handler
 from checkin_bot.bot.handlers.logs import logs_handler, view_logs_handler
 from checkin_bot.bot.handlers.stats import stats_handler
-from checkin_bot.bot.handlers.admin import admin_handler, admin_view_user_handler, admin_checkin_all_handler, admin_push_all_handler
+from checkin_bot.bot.handlers.admin import (
+    admin_handler,
+    admin_view_user_handler,
+    admin_checkin_all_handler,
+    admin_push_all_handler,
+    admin_view_ip_handler,
+)
 from checkin_bot.bot.handlers.help import help_handler
 from checkin_bot.bot.middleware.permission import PermissionMiddleware
 from checkin_bot.config.settings import get_settings
@@ -67,6 +73,7 @@ def create_app() -> Application:
     app.add_handler(admin_view_user_handler)
     app.add_handler(admin_checkin_all_handler)
     app.add_handler(admin_push_all_handler)
+    app.add_handler(admin_view_ip_handler)
     app.add_handler(help_handler)
 
     # 注册错误处理器
@@ -83,6 +90,13 @@ def create_app() -> Application:
     app.post_init = post_init
 
     logger.info("Bot 应用创建成功")
+
+    # 显示代理配置信息
+    if settings.socks5_proxy:
+        logger.info(f"SOCKS5 代理已配置: {settings.socks5_proxy}")
+        logger.info(f"Telegram API 代理: {'启用' if settings.telegram_use_proxy else '未启用'}")
+    else:
+        logger.info("未配置 SOCKS5 代理")
 
     return app
 

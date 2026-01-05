@@ -20,6 +20,7 @@ from checkin_bot.repositories.user_repository import UserRepository
 from checkin_bot.repositories.account_repository import AccountRepository
 from checkin_bot.services.permission import PermissionService
 from checkin_bot.services.account_manager import AccountManager
+from checkin_bot.services.network import NetworkService
 from checkin_bot.config.constants import SiteConfig
 
 logger = logging.getLogger(__name__)
@@ -48,13 +49,16 @@ def get_admin_user_list_keyboard(users_with_accounts: list) -> InlineKeyboardMar
             )
         ])
 
-    # 批量签到和一键推送按钮（同一行）
+    # 批量签到、一键推送和查看IP按钮
     buttons.append([
         InlineKeyboardButton("📋 批量签到", callback_data="admin_checkin_all"),
         InlineKeyboardButton("📢 一键推送", callback_data="admin_push_all"),
     ])
-    # 返回菜单按钮（单独一行）
-    buttons.append([InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu")])
+    # 网络信息和返回菜单按钮（同一行）
+    buttons.append([
+        InlineKeyboardButton("🌐 网络信息", callback_data="admin_view_ip"),
+        InlineKeyboardButton("🔙 返回菜单", callback_data="back_to_menu"),
+    ])
 
     return InlineKeyboardMarkup(buttons)
 
@@ -382,8 +386,80 @@ async def admin_push_all_callback(
             logger.warning(f"编辑消息失败: {e}")
 
 
+async def admin_view_ip_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """管理员查看 IP 信息回调"""
+    if not update.effective_message or not update.callback_query:
+        return
+
+    user_id = update.effective_user.id
+
+    # 检查管理员权限
+    permission_service = PermissionService()
+    is_admin = await permission_service.is_admin(user_id)
+
+    if not is_admin:
+        await answer_callback_query(update)
+        await update.effective_message.edit_text(
+            "🚨 没有权限哦",
+            reply_markup=get_back_to_menu_keyboard(),
+        )
+        return
+
+    logger.info(f"管理员 {user_id} 查看网络 IP 信息")
+
+    # 先发送"正在获取"消息
+    if update.callback_query:
+        try:
+            await update.callback_query.answer(text="正在获取 IP 信息...")
+        except Exception:
+            pass
+
+    # 获取 IP 信息
+    network_service = NetworkService()
+    ip_data = await network_service.get_ip_info()
+
+    if ip_data:
+        # 格式化 IP 信息
+        formatted_text = network_service.format_ip_info(ip_data)
+
+        # 获取用户列表键盘
+        user_repo = UserRepository()
+        account_repo = AccountRepository()
+        users = await user_repo.get_all()
+        users_with_accounts = []
+        for user in users:
+            account_count = await account_repo.count_by_user(user.id)
+            if account_count > 0:
+                users_with_accounts.append((user, account_count))
+
+        keyboard = get_admin_user_list_keyboard(users_with_accounts)
+
+        try:
+            await update.effective_message.edit_text(
+                formatted_text,
+                reply_markup=keyboard,
+            )
+        except Exception as e:
+            if "not modified" not in str(e).lower():
+                logger.warning(f"编辑消息失败: {e}")
+    else:
+        # 获取失败
+        try:
+            await update.effective_message.edit_text(
+                "💥 获取 IP 信息失败，请稍后重试",
+                reply_markup=update.effective_message.reply_markup,
+            )
+        except Exception as e:
+            if "not modified" not in str(e).lower():
+                logger.warning(f"编辑消息失败: {e}")
+
+
 # Handler instances
 admin_handler = CallbackQueryHandler(admin_callback, pattern="^admin$")
 admin_view_user_handler = CallbackQueryHandler(admin_view_user_callback, pattern="^admin_user_")
 admin_checkin_all_handler = CallbackQueryHandler(admin_checkin_all_callback, pattern="^admin_checkin_all$")
 admin_push_all_handler = CallbackQueryHandler(admin_push_all_callback, pattern="^admin_push_all$")
+admin_view_ip_handler = CallbackQueryHandler(admin_view_ip_callback, pattern="^admin_view_ip$")
