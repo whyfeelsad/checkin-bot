@@ -39,40 +39,36 @@ class PermissionService:
         Returns:
             权限级别
         """
-        # 1. 检查缓存
-        cached = await self.cache.get(telegram_id)
-        if cached is not None:
-            logger.debug(f"权限检查 {telegram_id}: {'允许' if cached else '拒绝'} (缓存)")
-            return PermissionLevel.USER if cached else PermissionLevel.NOT_WHITELISTED
-
-        # 2. 检查管理员
+        # 1. 检查管理员（管理员不使用缓存，确保实时检查）
         if telegram_id in self.settings.admin_ids:
-            await self.cache.set(telegram_id, True)
-            logger.debug(f"权限检查 {telegram_id}: 管理员")
+            logger.info(f"权限检查 {telegram_id}: 管理员 (ADMIN_IDS)")
             return PermissionLevel.ADMIN
 
-        # 3. 检查是否配置了白名单
-        if not self.settings.has_whitelist:
-            await self.cache.set(telegram_id, True)
-            logger.debug(f"权限检查 {telegram_id}: 无白名单配置，允许")
+        # 2. 检查是否配置了白名单
+        has_whitelist = self.settings.has_whitelist
+        logger.info(f"权限检查 {telegram_id}: 配置了白名单={has_whitelist}, 用户白名单={self.settings.whitelist_user_ids}, 群组白名单={self.settings.whitelist_group_ids}, 频道白名单={self.settings.whitelist_channel_ids}")
+
+        if not has_whitelist:
+            logger.info(f"权限检查 {telegram_id}: 无白名单配置，允许所有用户")
             return PermissionLevel.NO_CONFIG
 
-        # 4. 检查用户白名单
+        # 3. 检查用户白名单
         if telegram_id in self.settings.whitelist_user_ids:
-            await self.cache.set(telegram_id, True)
-            logger.debug(f"权限检查 {telegram_id}: 用户在白名单中")
+            logger.info(f"权限检查 {telegram_id}: 用户在白名单中")
             return PermissionLevel.USER
 
-        # 5. 检查群组和频道白名单
+        # 4. 检查群组和频道白名单
         if application and (self.settings.whitelist_group_ids or self.settings.whitelist_channel_ids):
+            logger.info(f"权限检查 {telegram_id}: 检查群组/频道白名单...")
             is_in_group = await self.check_user_in_whitelist_groups(telegram_id, application)
             if is_in_group:
-                # 用户在白名单群组/频道中，缓存并允许
-                await self.cache.set(telegram_id, True)
+                logger.info(f"权限检查 {telegram_id}: 用户在白名单群组/频道中，允许")
                 return PermissionLevel.USER
+            else:
+                logger.info(f"权限检查 {telegram_id}: 用户不在白名单群组/频道中")
 
         # 默认不允许访问
-        logger.debug(f"权限检查 {telegram_id}: 不在白名单中，拒绝")
+        logger.warning(f"权限检查 {telegram_id}: 不在白名单中，拒绝访问")
         return PermissionLevel.NOT_WHITELISTED
 
     async def is_admin(self, telegram_id: int) -> bool:
@@ -130,24 +126,29 @@ class PermissionService:
         channel_ids = self.settings.whitelist_channel_ids
         all_chat_ids = group_ids + channel_ids
 
+        logger.info(f"检查用户 {telegram_id} 是否在白名单群组/频道中，群组={group_ids}, 频道={channel_ids}")
+
         if not all_chat_ids:
+            logger.info(f"没有配置群组/频道白名单")
             return False
 
         # 检查用户是否在任何一个白名单群组/频道中
         for chat_id in all_chat_ids:
             try:
+                logger.info(f"检查用户 {telegram_id} 是否在群组/频道 {chat_id} 中...")
                 member = await application.bot.get_chat_member(
                     chat_id=chat_id,
                     user_id=telegram_id,
                 )
                 # 如果能获取到成员信息，说明用户在群组中
-                logger.debug(
-                    f"用户 {telegram_id} 在白名单群组/频道 {chat_id} 中: {member.status}"
+                logger.info(
+                    f"用户 {telegram_id} 在白名单群组/频道 {chat_id} 中: status={member.status}"
                 )
                 return True
             except Exception as e:
                 # 用户不在群组中或 Bot 无权限访问
-                logger.debug(f"检查用户 {telegram_id} 在群组 {chat_id} 成员身份失败: {e}")
+                logger.warning(f"检查用户 {telegram_id} 在群组/频道 {chat_id} 成员身份失败: {e}")
                 continue
 
+        logger.warning(f"用户 {telegram_id} 不在任何白名单群组/频道中")
         return False
