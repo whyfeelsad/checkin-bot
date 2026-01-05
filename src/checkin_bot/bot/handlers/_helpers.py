@@ -68,8 +68,24 @@ async def show_account_list(
     Returns:
         是否成功显示（False 表示账号为空）
     """
+    # 确定要显示的账号所属用户
+    target_user_id = user_id
+    title = f"📋 您的账号列表"
+
+    # 如果管理员在查看其他用户的账号，使用目标用户 ID
+    if context and context.user_data:
+        admin_viewing_user_id = context.user_data.get("admin_viewing_user_id")
+        if admin_viewing_user_id:
+            target_user_id = admin_viewing_user_id
+            # 获取目标用户信息用于标题
+            user_repo = UserRepository()
+            target_user = await user_repo.get_by_id(target_user_id)
+            if target_user:
+                username = target_user.first_name or target_user.telegram_username or f"用户{target_user_id}"
+                title = f"👤 {username} 的账号列表"
+
     account_manager = AccountManager()
-    accounts = await account_manager.get_user_accounts(user_id)
+    accounts = await account_manager.get_user_accounts(target_user_id)
 
     if not accounts:
         await update.effective_message.edit_text(
@@ -79,21 +95,7 @@ async def show_account_list(
         return False
 
     keyboard = get_account_list_keyboard(accounts, update_status)
-
-    # 检查是否是管理员在查看其他用户的账号
-    is_admin_viewing = False
-    title = f"📋 您的账号列表（共 {len(accounts)} 个）"
-
-    if context and context.user_data:
-        admin_viewing_user_id = context.user_data.get("admin_viewing_user_id")
-        if admin_viewing_user_id and admin_viewing_user_id == user_id:
-            is_admin_viewing = True
-            # 获取目标用户信息
-            from checkin_bot.repositories.user_repository import UserRepository
-            user_repo = UserRepository()
-            target_user = await user_repo.get_by_id(user_id)
-            username = target_user.first_name or target_user.telegram_username or f"用户{user_id}"
-            title = f"👤 {username} 的账号列表（共 {len(accounts)} 个）"
+    title = f"{title}（共 {len(accounts)} 个）"
 
     try:
         await update.effective_message.edit_text(
