@@ -35,6 +35,7 @@ from checkin_bot.bot.keyboards.account import (
 from checkin_bot.config.constants import CheckinMode, FINGERPRINT_OPTIONS, SessionState, SiteType, SiteConfig
 from checkin_bot.repositories.session_repository import SessionRepository
 from checkin_bot.repositories.user_repository import UserRepository
+from checkin_bot.repositories.account_repository import AccountRepository
 from checkin_bot.services.account_manager import AccountManager
 
 logger = logging.getLogger(__name__)
@@ -401,6 +402,10 @@ async def add_account_mode(
         account = next((acc for acc in accounts if acc.id == account_id), None)
         if account:
             account_credits = account.credits
+            # 更新账号的签到模式到数据库
+            account_repo = AccountRepository()
+            await account_repo.update_checkin_mode(account_id, mode)
+            logger.info(f"新账号签到模式已设置为 {mode.value}: 账号 ID={account_id}")
 
     # 根据模式显示不同的文案
     if mode == CheckinMode.FIXED:
