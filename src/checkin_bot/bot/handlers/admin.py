@@ -414,8 +414,8 @@ async def admin_view_ip_callback(
     if update.callback_query:
         try:
             await update.callback_query.answer(text="正在获取 IP 信息...")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"回答 callback query 失败（可能已过期）: {e}")
 
     # 获取 IP 信息
     network_service = NetworkService()

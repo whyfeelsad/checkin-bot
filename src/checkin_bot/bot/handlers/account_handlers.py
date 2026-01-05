@@ -497,8 +497,8 @@ async def confirm_replace_callback(
                 message_id=progress_msg_id,
                 text=f"⚔️ 替换账号中...\n⏳ 当前进度 {bar} {percentage}%",
             )
-        except Exception:
-            pass  # 忽略进度更新错误
+        except Exception as e:
+            logger.debug(f"更新进度消息失败: {e}")
 
     # 先删除旧账号
     account_manager = AccountManager()
@@ -813,8 +813,8 @@ async def retry_login_callback(
                     message_id=progress_msg_id,
                     text=f"⚔️ 替换账号中...\n⏳ 当前进度 {bar} {percentage}%",
                 )
-            except Exception:
-                pass  # 忽略进度更新错误
+            except Exception as e:
+                logger.debug(f"更新进度消息失败: {e}")
 
         # 先删除旧账号
         account_manager = AccountManager()
@@ -942,7 +942,8 @@ async def retry_login_callback(
                 text="⚔️ 与 Cloudflare 的终极对决中\n⏳ 当前进度 ▰▱▱▱▱▱▱▱▱ 0%",
             )
             progress_msg_id = prompt_message_id
-        except Exception:
+        except Exception as e:
+            logger.debug(f"编辑进度消息失败，将发送新消息: {e}")
             msg = await context.bot.send_message(chat_id, "⚔️ 与 Cloudflare 的终极对决中\n⏳ 当前进度 ▰▱▱▱▱▱▱▱▱ 0%")
             progress_msg_id = msg.message_id
     else:
