@@ -44,7 +44,7 @@ class PermissionMiddleware(BaseHandler):
         telegram_id = update.effective_user.id
         application = context.application
 
-        # 诊断：记录 application 的详细信息
+        # 诊断：记录 application 的详细信息（仅调试模式）
         logger.debug(
             f"权限中间件诊断: "
             f"application类型={type(application).__name__}, "
@@ -57,10 +57,8 @@ class PermissionMiddleware(BaseHandler):
             telegram_id, application
         )
 
-        logger.info(f"权限中间件: 用户 {telegram_id} 权限级别={level}")
-
+        # 只记录拒绝访问的情况，通过的请求不记录（减少日志量）
         if level == PermissionLevel.NOT_WHITELISTED:
-            # 用户不在白名单中，发送提示消息
             logger.warning(f"权限中间件: 拒绝用户 {telegram_id} 访问（不在白名单中）")
 
             message = (
@@ -90,5 +88,4 @@ class PermissionMiddleware(BaseHandler):
             raise ApplicationHandlerStop  # 阻止继续处理
 
         # 权限检查通过，继续由其他 handler 处理
-        logger.info(f"权限中间件: 用户 {telegram_id} 权限检查通过")
         return
