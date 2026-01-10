@@ -267,12 +267,17 @@ class AccountRepository(BaseRepository):
 
     async def get_by_checkin_time(self, hour: int) -> List[Account]:
         """Get accounts with specific check-in hour"""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[数据查询] 查询签到时间为 {hour} 点的账号")
+
         conn = await self._get_connection()
         try:
             records = await conn.fetch(
                 "SELECT * FROM accounts WHERE checkin_hour = $1 AND status = 'active'",
                 hour,
             )
+            logger.info(f"[数据查询] 找到 {len(records)} 个账号需要签到")
             return [self._to_model(record) for record in records]
         finally:
             await self._release_connection(conn)
