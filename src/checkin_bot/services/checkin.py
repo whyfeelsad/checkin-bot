@@ -173,25 +173,21 @@ class CheckinService:
         current_time = now()
         current_hour = current_time.hour
         current_minute = current_time.minute
+        slot = current_minute // 12 + 1  # 时段从 1 开始
+        current_slot = (current_hour, slot)
 
-        # 计算时间段（每小时 5 个时段，每个 12 分钟）
-        slot = current_minute // 12
-
-        logger.debug(f"定时签到检查 {current_time.strftime('%H:%M')}: 小时={current_hour}, 时段={slot}")
+        logger.info(f"[自动签到] 定时签到检查 {current_time.strftime('%H:%M')}: 小时={current_hour}, 时段={slot}")
 
         # 获取需要签到的账号
         accounts = await self.account_repo.get_by_checkin_time(current_hour)
 
         if not accounts:
-            logger.debug("无需签到的账号")
             return []
-
-        logger.info(f"找到 {len(accounts)} 个账号需要签到")
 
         # 并发执行签到
         results = await self._execute_checkins_concurrently(accounts, current_time)
 
-        logger.info(f"定时签到完成: 处理了 {len(results)} 个账号")
+        logger.info(f"[自动签到] 定时签到完成: 处理了 {len(results)} 个账号")
         return results
 
     async def _execute_checkins_concurrently(
@@ -211,15 +207,22 @@ class CheckinService:
         """
         async def checkin_with_catch(account):
             try:
+                # 计算可用时段
+                available_slots = await self._get_available_slots(account, current_time)
+
+                logger.info(f"[自动签到] 账号 {account.site_username} • {account.site.value} 可用时段: {available_slots}")
+
                 # 防重复检测
-                if await self._should_checkin(account, current_time):
-                    logger.debug(f"正在签到: 站点 {account.site.value} 用户 {account.site_username}")
+                should_checkin = await self._should_checkin(account, current_time)
+
+                if should_checkin:
+                    logger.info(f"[自动签到] 正在签到: {account.site_username} • {account.site.value}")
                     return await self._do_checkin(account, is_manual=False)
                 else:
-                    logger.debug(f"跳过签到: 站点 {account.site.value} 用户 {account.site_username} (已签到)")
+                    logger.info(f"[自动签到] 跳过签到: {account.site_username} • {account.site.value} (该时段已签到)")
                     return None
             except Exception as e:
-                logger.error(f"定时签到错误: 账号 {account.id} - {e}", exc_info=True)
+                logger.error(f"[自动签到] 签到错误: 账号 {account.id} ({account.site_username}) - {e}", exc_info=True)
                 return None
 
         # 并发执行所有签到，限制并发数为 5
@@ -229,21 +232,51 @@ class CheckinService:
         # 过滤掉 None 结果
         return [r for r in results_list if r is not None]
 
+    async def _get_available_slots(self, account, current_time: dt) -> list[int]:
+        """
+        计算当前小时的可用时段
+
+        Returns:
+            可用时段列表，如 [1, 2, 4, 5]
+        """
+        # 获取历史签到时段
+        recent_slots = await self.log_repo.get_recent_slots(account.id, days=4)
+
+        # 当前小时的所有时段（1-5）
+        all_slots = [1, 2, 3, 4, 5]
+
+        # 找出已签到的时段
+        used_slots = set()
+        for log_time in recent_slots:
+            # 只检查当前小时的记录
+            if log_time.hour == current_time.hour:
+                log_slot = log_time.minute // 12 + 1  # 时段从 1 开始
+                used_slots.add(log_slot)
+
+        # 可用时段 = 所有时段 - 已签到时段
+        available_slots = [s for s in all_slots if s not in used_slots]
+
+        return available_slots
+
     async def _should_checkin(
         self,
         account,
         current_time: dt,
     ) -> bool:
-        """防重复检测"""
+        """
+        防重复检测
+
+        检查最近 4 天是否在当前时段已签到（防止重复签到）
+        """
         # 检查最近 4 天是否已签到
         recent_slots = await self.log_repo.get_recent_slots(account.id, days=4)
 
-        current_slot = (current_time.hour, current_time.minute // 12)
+        current_slot = (current_time.hour, current_time.minute // 12 + 1)  # 时段从 1 开始
 
         for log_time in recent_slots:
-            # 数据库返回的是 UTC 时间，需要转换为本地时区再比较
-            local_log_time = to_local(log_time)
-            log_slot = (local_log_time.hour, local_log_time.minute // 12)
+            # 数据库返回的 TIMESTAMP 是 naive datetime（本地时区）
+            # 因为数据库连接已设置时区，所以直接使用即可
+            log_slot = (log_time.hour, log_time.minute // 12 + 1)  # 时段从 1 开始
             if log_slot == current_slot:
                 return False
 
