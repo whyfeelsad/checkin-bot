@@ -74,7 +74,7 @@ class CheckinService:
             Check-in result dictionary
         """
         checkin_type = "手动" if is_manual else "自动"
-        today = date.today()
+        today = now().date()
 
         # Clear cache if date has changed
         if self._cache_date != today:
@@ -83,10 +83,14 @@ class CheckinService:
 
         # Check today's check-in status with cache
         if account.id not in self._today_cache:
-            self._today_cache[account.id] = await self.log_repo.get_today_success_count(account.id) > 0
+            self._today_cache[account.id] = (
+                await self.log_repo.get_today_success_count(account.id) > 0
+            )
 
         if self._today_cache[account.id]:
-            logger.info(f"{checkin_type}签到跳过: {account.site_username} • {account.site.value} (今日已签到)")
+            logger.info(
+                f"{checkin_type}签到跳过: {account.site_username} • {account.site.value} (今日已签到)"
+            )
             # 获取今天成功签到获得的鸡腿数
             today_delta = await self.log_repo.get_today_success_delta(account.id)
             return {
@@ -124,9 +128,13 @@ class CheckinService:
                         credits_after=result.get("credits_after"),
                         error_code=result.get("error_code"),
                     )
-                    logger.info(f"{checkin_type}签到成功: {account.site_username} • {account.site.value} +{result.get('credits_delta', 0)} 鸡腿")
+                    logger.info(
+                        f"{checkin_type}签到成功: {account.site_username} • {account.site.value} +{result.get('credits_delta', 0)} 鸡腿"
+                    )
                 else:
-                    logger.info(f"{checkin_type}签到成功: {account.site_username} • {account.site.value} +{result.get('credits_delta', 0)} 鸡腿 (今日已记录)")
+                    logger.info(
+                        f"{checkin_type}签到成功: {account.site_username} • {account.site.value} +{result.get('credits_delta', 0)} 鸡腿 (今日已记录)"
+                    )
             else:
                 # 签到失败，记录失败日志
                 await self.log_repo.create(
@@ -139,7 +147,9 @@ class CheckinService:
                     credits_after=result.get("credits_after"),
                     error_code=result.get("error_code"),
                 )
-                logger.warning(f"{checkin_type}签到失败: {account.site_username} • {account.site.value} - {result.get('message')}")
+                logger.warning(
+                    f"{checkin_type}签到失败: {account.site_username} • {account.site.value} - {result.get('message')}"
+                )
 
             # 更新账号鸡腿数和签到次数（只在第一次成功时增加计数）
             if result["success"] and result.get("credits_after") is not None:
@@ -155,7 +165,10 @@ class CheckinService:
             return result
 
         except Exception as e:
-            logger.error(f"{checkin_type}签到异常: {account.site_username} • {account.site.value} - {e}", exc_info=True)
+            logger.error(
+                f"{checkin_type}签到异常: {account.site_username} • {account.site.value} - {e}",
+                exc_info=True,
+            )
             return {
                 "success": False,
                 "message": f"签到异常: {str(e)}",
@@ -176,7 +189,9 @@ class CheckinService:
         slot = current_minute // 12 + 1  # 时段从 1 开始
         current_slot = (current_hour, slot)
 
-        logger.info(f"[自动签到] 定时签到检查 {current_time.strftime('%H:%M')}: 小时={current_hour}, 时段={slot}")
+        logger.info(
+            f"[自动签到] 定时签到检查 {current_time.strftime('%H:%M')}: 小时={current_hour}, 时段={slot}"
+        )
 
         # 获取需要签到的账号
         accounts = await self.account_repo.get_by_checkin_time(current_hour)
@@ -205,24 +220,34 @@ class CheckinService:
         Returns:
             签到结果列表
         """
+
         async def checkin_with_catch(account):
             try:
                 # 计算可用时段
                 available_slots = await self._get_available_slots(account, current_time)
 
-                logger.info(f"[自动签到] 账号 {account.site_username} • {account.site.value} 可用时段: {available_slots}")
+                logger.info(
+                    f"[自动签到] 账号 {account.site_username} • {account.site.value} 可用时段: {available_slots}"
+                )
 
                 # 防重复检测
                 should_checkin = await self._should_checkin(account, current_time)
 
                 if should_checkin:
-                    logger.info(f"[自动签到] 正在签到: {account.site_username} • {account.site.value}")
+                    logger.info(
+                        f"[自动签到] 正在签到: {account.site_username} • {account.site.value}"
+                    )
                     return await self._do_checkin(account, is_manual=False)
                 else:
-                    logger.info(f"[自动签到] 跳过签到: {account.site_username} • {account.site.value} (该时段已签到)")
+                    logger.info(
+                        f"[自动签到] 跳过签到: {account.site_username} • {account.site.value} (该时段已签到)"
+                    )
                     return None
             except Exception as e:
-                logger.error(f"[自动签到] 签到错误: {account.site_username} • {account.site.value} - {e}", exc_info=True)
+                logger.error(
+                    f"[自动签到] 签到错误: {account.site_username} • {account.site.value} - {e}",
+                    exc_info=True,
+                )
                 return None
 
         # 并发执行所有签到，限制并发数为 5
@@ -271,7 +296,10 @@ class CheckinService:
         # 检查最近 4 天是否已签到
         recent_slots = await self.log_repo.get_recent_slots(account.id, days=4)
 
-        current_slot = (current_time.hour, current_time.minute // 12 + 1)  # 时段从 1 开始
+        current_slot = (
+            current_time.hour,
+            current_time.minute // 12 + 1,
+        )  # 时段从 1 开始
 
         for log_time in recent_slots:
             # 数据库返回的 TIMESTAMP 是 naive datetime（本地时区）
